@@ -10,7 +10,7 @@ C++ Compiler: Ensure you have a C++ compiler that supports C++20 or higher for c
 
 ### Libraries and Headers
 
-Standard Libraries: The code utilizes standard C++ libraries such as <iostream>, <string>, <vector>, <cstdint>, <cstring>, <source_location>, <filesystem>, etc. Ensure these standard libraries are available in your development environment.
+Standard Libraries: The code utilizes standard C++ libraries such as `<iostream>`, `<string>`, `<vector>`, `<cstdint>`, `<cstring>`, `<source_location>`, `<filesystem>` etc. Ensure these standard libraries are available in your development environment.
 
 ### Platform Compatibility
 
@@ -106,10 +106,6 @@ int main()
 }
 ```
 ![easylogexample](easyLogExample.png)
-
-## Dependencies
-
-This logging system uses standard C++ libraries such as `<iostream>`, `<string>`, `<vector>`, etc. No additional external dependencies are required.
 
 ## Contributions and Issues
 
