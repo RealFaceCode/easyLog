@@ -412,4 +412,4 @@ namespace eLog {
         LogImpl::log(LogLevel::FATAL, colorizedString, src);
     }
 } // namespace eLog
-#endif EASY_LOG_HPP
+#endif
