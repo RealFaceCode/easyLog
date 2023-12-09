@@ -114,4 +114,3 @@ Contributions and bug reports are welcome! Please feel free to open an issue or 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-```
