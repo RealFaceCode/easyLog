@@ -105,8 +105,7 @@ int main()
     return 0;
 }
 ```
-
-- [](easyLogExample.png)
+![easylogexample](easyLogExample.png)
 
 ## Dependencies
 
