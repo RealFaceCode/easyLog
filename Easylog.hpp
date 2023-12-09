@@ -252,13 +252,15 @@ namespace eLog {
         static bool IsConsoleLogEnabled = true;
         static bool IsColorEnabled = AsciiColor::CheckIfColorIsSupported();
         static bool UseDefaultFileLog = true;
+        static bool DirecrtFlush = false;
         static std::string FileLoggerName = "";
 
         enum class StateEnum
         {
             TERMINAL_LOG,
             FILE_LOG,
-            DEFAULT_FILE_LOG
+            DEFAULT_FILE_LOG,
+            DIRECT_FLUSH
         };
     }
 
@@ -331,6 +333,8 @@ namespace eLog {
             std::string logLevelString = LogLevel::getLogLevelString(logLevel);
             std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
             std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << msg << std::endl;
+            if(State::DirecrtFlush)
+                std::cout.flush();
         }
 
         void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, const std::source_location& src = std::source_location::current())
@@ -338,6 +342,8 @@ namespace eLog {
             std::string logLevelString = LogLevel::getLogLevelString(logLevel);
             std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
             std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << colorizedString << std::endl;
+            if(State::DirecrtFlush)
+                std::cout.flush();
         }
     } // namespace LogImpl
 
@@ -425,6 +431,8 @@ namespace eLog {
                     Impl::DefaultFileLogger.mStream.open(Impl::DefaultFileLogger.mPath, Impl::DefaultFileLogger.mOpenMode);
 
                 Impl::DefaultFileLogger.mStream << logLevel << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
+                if(State::DirecrtFlush)
+                    Impl::DefaultFileLogger.mStream.flush();
             }
             else
             {
@@ -433,6 +441,8 @@ namespace eLog {
                     fileLogger.mStream.open(fileLogger.mPath, fileLogger.mOpenMode);
 
                 fileLogger.mStream << logLevel << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
+                if(State::DirecrtFlush)
+                    fileLogger.mStream.flush();
             }
         }
     }
@@ -479,6 +489,9 @@ namespace eLog {
                 break;
             case DEFAULT_FILE_LOG:
                 State::UseDefaultFileLog = isEnabled;
+                break;
+            case DIRECT_FLUSH:
+                State::DirecrtFlush = isEnabled;
                 break;
         }
     }
