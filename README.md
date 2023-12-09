@@ -105,6 +105,7 @@ int main()
     return 0;
 }
 ```
+
 ![easylogexample](easyLogExample.png)
 
 ## Contributions and Issues
