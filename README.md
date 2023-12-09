@@ -1,4 +1,4 @@
-# Logging System in C++
+# EasyLog
 
 This logging system in C++ supports colored output and string replacement. It includes several functions and data structures to facilitate logging with various log levels and customization options.
 
