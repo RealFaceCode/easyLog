@@ -106,6 +106,8 @@ int main()
 }
 ```
 
+- [](easyLogExample.png)
+
 ## Dependencies
 
 This logging system uses standard C++ libraries such as `<iostream>`, `<string>`, `<vector>`, etc. No additional external dependencies are required.
