@@ -13,23 +13,23 @@
 namespace eLog {
     namespace AsciiColor
     {
-        constexpr const char* RESET = "\033[0m";
-        constexpr const char* BLACK = "\033[30m";
-        constexpr const char* RED = "\033[31m";
-        constexpr const char* GREEN = "\033[32m";
-        constexpr const char* YELLOW = "\033[33m";
-        constexpr const char* BLUE = "\033[34m";
-        constexpr const char* MAGENTA = "\033[35m";
-        constexpr const char* CYAN = "\033[36m";
-        constexpr const char* WHITE = "\033[37m";
-        constexpr const char* BOLD_BLACK = "\033[1m\033[30m";
-        constexpr const char* BOLD_RED = "\033[1m\033[31m";
-        constexpr const char* BOLD_GREEN = "\033[1m\033[32m";
-        constexpr const char* BOLD_YELLOW = "\033[1m\033[33m";
-        constexpr const char* BOLD_BLUE = "\033[1m\033[34m";
-        constexpr const char* BOLD_MAGENTA = "\033[1m\033[35m";
-        constexpr const char* BOLD_CYAN = "\033[1m\033[36m";
-        constexpr const char* BOLD_WHITE = "\033[1m\033[37m";
+        static constexpr const char* RESET = "\033[0m";
+        static constexpr const char* BLACK = "\033[30m";
+        static constexpr const char* RED = "\033[31m";
+        static constexpr const char* GREEN = "\033[32m";
+        static constexpr const char* YELLOW = "\033[33m";
+        static constexpr const char* BLUE = "\033[34m";
+        static constexpr const char* MAGENTA = "\033[35m";
+        static constexpr const char* CYAN = "\033[36m";
+        static constexpr const char* WHITE = "\033[37m";
+        static constexpr const char* BOLD_BLACK = "\033[1m\033[30m";
+        static constexpr const char* BOLD_RED = "\033[1m\033[31m";
+        static constexpr const char* BOLD_GREEN = "\033[1m\033[32m";
+        static constexpr const char* BOLD_YELLOW = "\033[1m\033[33m";
+        static constexpr const char* BOLD_BLUE = "\033[1m\033[34m";
+        static constexpr const char* BOLD_MAGENTA = "\033[1m\033[35m";
+        static constexpr const char* BOLD_CYAN = "\033[1m\033[36m";
+        static constexpr const char* BOLD_WHITE = "\033[1m\033[37m";
 
         static bool CheckIfColorIsSupported()
         {
@@ -252,11 +252,11 @@ namespace eLog {
             std::string mColor;
         };
 
-        constexpr LogLevel DEBUG = { "DEBUG", AsciiColor::BOLD_BLUE };
-        constexpr LogLevel INFO = { "INFO", AsciiColor::BOLD_GREEN };
-        constexpr LogLevel WARNING = { "WARNING", AsciiColor::BOLD_YELLOW };
-        constexpr LogLevel ERROR = { "ERROR", AsciiColor::BOLD_RED };
-        constexpr LogLevel FATAL = { "FATAL", AsciiColor::BOLD_MAGENTA };
+        static constexpr LogLevel DEBUG = { "DEBUG", AsciiColor::BOLD_BLUE };
+        static constexpr LogLevel INFO = { "INFO", AsciiColor::BOLD_GREEN };
+        static constexpr LogLevel WARNING = { "WARNING", AsciiColor::BOLD_YELLOW };
+        static constexpr LogLevel ERROR = { "ERROR", AsciiColor::BOLD_RED };
+        static constexpr LogLevel FATAL = { "FATAL", AsciiColor::BOLD_MAGENTA };
 
         std::string getLogLevelString(const LogLevel& logLevel)
         {
@@ -276,7 +276,7 @@ namespace eLog {
             std::string mTime;
         };
 
-        constexpr const char* LogInfoFmt = "{}[{} | {} | {} | {} | {}]{}";
+        static constexpr const char* LogInfoFmt = "{}[{} | {} | {} | {} | {}]{}";
 
         LogInfo getLogInfo(const std::source_location& src)
         {
