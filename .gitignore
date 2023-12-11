@@ -1,7 +1,8 @@
 /CMakeLists.txt
 build-WIN/
 build-LINUX/
-build-MAC/#
+build-UNIX/
+build-MAC/
 .vscode/
 main.cpp
 TODO.md
