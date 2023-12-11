@@ -48,28 +48,28 @@ int main()
 
     eLog::logDebug("this is a debug message", 
     {
-        eLog::Colorize::colorize("debug", eLog::AsciiColor::BOLD_RED),
-        eLog::Colorize::colorize("message", eLog::AsciiColor::BOLD_GREEN)
+        eLog::Colorize::colorize("debug", eLog::AsciiColor::ColorEnum::BOLD_RED),
+        eLog::Colorize::colorize("message", eLog::AsciiColor::ColorEnum::BOLD_GREEN)
     });
     eLog::logInfo("this is a info message", 
     {
-        eLog::Colorize::colorize("info", eLog::AsciiColor::BOLD_RED),
-        eLog::Colorize::colorize("message", eLog::AsciiColor::BOLD_GREEN)
+        eLog::Colorize::colorize("info", eLog::AsciiColor::ColorEnum::BOLD_RED),
+        eLog::Colorize::colorize("message", eLog::AsciiColor::ColorEnum::BOLD_GREEN)
     });
     eLog::logWarning("this is a warning message", 
     {
-        eLog::Colorize::colorize("warning", eLog::AsciiColor::BOLD_RED),
-        eLog::Colorize::colorize("message", eLog::AsciiColor::BOLD_GREEN)
+        eLog::Colorize::colorize("warning", eLog::AsciiColor::ColorEnum::BOLD_RED),
+        eLog::Colorize::colorize("message", eLog::AsciiColor::ColorEnum::BOLD_GREEN)
     });
     eLog::logError("this is a error message", 
     {
-        eLog::Colorize::colorize("error", eLog::AsciiColor::BOLD_RED),
-        eLog::Colorize::colorize("message", eLog::AsciiColor::BOLD_GREEN)
+        eLog::Colorize::colorize("error", eLog::AsciiColor::ColorEnum::BOLD_RED),
+        eLog::Colorize::colorize("message", eLog::AsciiColor::ColorEnum::BOLD_GREEN)
     });
     eLog::logFatal("this is a fatal message", 
     {
-        eLog::Colorize::colorize("fatal", eLog::AsciiColor::BOLD_RED),
-        eLog::Colorize::colorize("message", eLog::AsciiColor::BOLD_GREEN)
+        eLog::Colorize::colorize("fatal", eLog::AsciiColor::ColorEnum::BOLD_RED),
+        eLog::Colorize::colorize("message", eLog::AsciiColor::ColorEnum::BOLD_GREEN)
     });
 
     std::cout << std::endl;
@@ -78,28 +78,28 @@ int main()
 
     eLog::logDebug(str, 
     {
-        eLog::Colorize::colorize("string", eLog::AsciiColor::BOLD_GREEN, true),
-        eLog::Colorize::colorize("the", eLog::AsciiColor::MAGENTA, true)
+        eLog::Colorize::colorize("string", eLog::AsciiColor::ColorEnum::BOLD_GREEN, true),
+        eLog::Colorize::colorize("the", eLog::AsciiColor::ColorEnum::MAGENTA, true)
     });
     eLog::logInfo(str, 
     {
-        eLog::Colorize::colorize("string", eLog::AsciiColor::BOLD_CYAN, true),
-        eLog::Colorize::colorize("the", eLog::AsciiColor::RED, true)
+        eLog::Colorize::colorize("string", eLog::AsciiColor::ColorEnum::BOLD_CYAN, true),
+        eLog::Colorize::colorize("the", eLog::AsciiColor::ColorEnum::RED, true)
     });
     eLog::logWarning(str, 
     {
-        eLog::Colorize::colorize("string", eLog::AsciiColor::BOLD_RED, true),
-        eLog::Colorize::colorize("the", eLog::AsciiColor::WHITE, true)
+        eLog::Colorize::colorize("string", eLog::AsciiColor::ColorEnum::BOLD_RED, true),
+        eLog::Colorize::colorize("the", eLog::AsciiColor::ColorEnum::WHITE, true)
     });
     eLog::logError(str, 
     {
-        eLog::Colorize::colorize("string", eLog::AsciiColor::BOLD_WHITE, true),
-        eLog::Colorize::colorize("the", eLog::AsciiColor::YELLOW, true)
+        eLog::Colorize::colorize("string", eLog::AsciiColor::ColorEnum::BOLD_WHITE, true),
+        eLog::Colorize::colorize("the", eLog::AsciiColor::ColorEnum::YELLOW, true)
     });
     eLog::logFatal(str, 
     {
-        eLog::Colorize::colorize("string", eLog::AsciiColor::BOLD_YELLOW, true),
-        eLog::Colorize::colorize("the", eLog::AsciiColor::GREEN, true)
+        eLog::Colorize::colorize("string", eLog::AsciiColor::ColorEnum::BOLD_YELLOW, true),
+        eLog::Colorize::colorize("the", eLog::AsciiColor::ColorEnum::GREEN, true)
     });
 
     return 0;
