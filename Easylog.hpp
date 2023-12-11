@@ -1,5 +1,4 @@
-#ifndef EASY_LOG_HPP
-#define EASY_LOG_HPP
+#pragma once
 
 #include <iostream>
 #include <string>
@@ -7,80 +6,66 @@
 #include <vector>
 #include <stdint.h>
 #include <cstring>
+#ifdef __clang__
+#include <experimental/source_location>
+#else
 #include <source_location>
+#endif
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
 #include <mutex>
+#include <ctime>
 
 namespace eLog {
     namespace AsciiColor
     {
-        static constexpr const char* RESET = "\033[0m";
-        static constexpr const char* BLACK = "\033[30m";
-        static constexpr const char* RED = "\033[31m";
-        static constexpr const char* GREEN = "\033[32m";
-        static constexpr const char* YELLOW = "\033[33m";
-        static constexpr const char* BLUE = "\033[34m";
-        static constexpr const char* MAGENTA = "\033[35m";
-        static constexpr const char* CYAN = "\033[36m";
-        static constexpr const char* WHITE = "\033[37m";
-        static constexpr const char* BOLD_BLACK = "\033[1m\033[30m";
-        static constexpr const char* BOLD_RED = "\033[1m\033[31m";
-        static constexpr const char* BOLD_GREEN = "\033[1m\033[32m";
-        static constexpr const char* BOLD_YELLOW = "\033[1m\033[33m";
-        static constexpr const char* BOLD_BLUE = "\033[1m\033[34m";
-        static constexpr const char* BOLD_MAGENTA = "\033[1m\033[35m";
-        static constexpr const char* BOLD_CYAN = "\033[1m\033[36m";
-        static constexpr const char* BOLD_WHITE = "\033[1m\033[37m";
+        enum class ColorEnum
+        {
+            RESET,
+            BLACK,
+            RED,
+            GREEN,
+            YELLOW,
+            BLUE,
+            MAGENTA,
+            CYAN,
+            WHITE,
+            BOLD_BLACK,
+            BOLD_RED,
+            BOLD_GREEN,
+            BOLD_YELLOW,
+            BOLD_BLUE,
+            BOLD_MAGENTA,
+            BOLD_CYAN,
+            BOLD_WHITE
+        };
+
+        const std::unordered_map<ColorEnum, std::string> AsciiColors = {
+            {ColorEnum::RESET, "\033[0m"},
+            {ColorEnum::BLACK, "\033[30m"},
+            {ColorEnum::RED, "\033[31m"},
+            {ColorEnum::GREEN, "\033[32m"},
+            {ColorEnum::YELLOW, "\033[33m"},
+            {ColorEnum::BLUE, "\033[34m"},
+            {ColorEnum::MAGENTA, "\033[35m"},
+            {ColorEnum::CYAN, "\033[36m"},
+            {ColorEnum::WHITE, "\033[37m"},
+            {ColorEnum::BOLD_BLACK, "\033[1m\033[30m"},
+            {ColorEnum::BOLD_RED, "\033[1m\033[31m"},
+            {ColorEnum::BOLD_GREEN, "\033[1m\033[32m"},
+            {ColorEnum::BOLD_YELLOW, "\033[1m\033[33m"},
+            {ColorEnum::BOLD_BLUE, "\033[1m\033[34m"},
+            {ColorEnum::BOLD_MAGENTA, "\033[1m\033[35m"},
+            {ColorEnum::BOLD_CYAN, "\033[1m\033[36m"},
+            {ColorEnum::BOLD_WHITE, "\033[1m\033[37m"}
+        };
 
         static bool CheckIfColorIsSupported()
         {
             if (const char* term = std::getenv("TERM"); term == nullptr)
                 return false;
             return true;
-        }
-
-        bool IsColorString(const char* str)
-        {
-            if(str == nullptr)
-                return false;
-            else if(::strcmp(str, RESET) == 0)
-                return true;
-            else if(::strcmp(str, BLACK) == 0)
-                return true;
-            else if(::strcmp(str, RED) == 0)
-                return true;
-            else if(::strcmp(str, GREEN) == 0)
-                return true;
-            else if(::strcmp(str, YELLOW) == 0)
-                return true;
-            else if(::strcmp(str, BLUE) == 0)
-                return true;
-            else if(::strcmp(str, MAGENTA) == 0)
-                return true;
-            else if(::strcmp(str, CYAN) == 0)
-                return true;
-            else if(::strcmp(str, WHITE) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_BLACK) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_RED) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_GREEN) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_YELLOW) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_BLUE) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_MAGENTA) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_CYAN) == 0)
-                return true;
-            else if(::strcmp(str, BOLD_WHITE) == 0)
-                return true;
-            else
-                return false;
         }
     } // namespace AsciiColor
 
@@ -194,12 +179,12 @@ namespace eLog {
                 mStr = str;
             }
 
-            void setColor(std::string_view strToColorize, const char* color, bool replaceAllMatching = false)
+            void setColor(std::string_view strToColorize, AsciiColor::ColorEnum color, bool replaceAllMatching = false)
             {
-                if (strToColorize.empty() && !AsciiColor::IsColorString(color))
+                if (strToColorize.empty() && !AsciiColor::AsciiColors.contains(color))
                     return;
 
-                std::string prevColor (AsciiColor::RESET);
+                std::string prevColor = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET);
                 std::size_t lastColorPos = 0;
 
                 if(!mReplaceStrings.empty())
@@ -210,11 +195,11 @@ namespace eLog {
 
                 std::string replace;
                 if(lastColorPos < mStr.find(strToColorize))
-                    replace = std::string(color).append(strToColorize).append(AsciiColor::RESET);
+                    replace = std::string(AsciiColor::AsciiColors.at(color)).append(strToColorize).append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
                 else
-                    replace = std::string(color).append(strToColorize).append(prevColor);
+                    replace = std::string(AsciiColor::AsciiColors.at(color)).append(strToColorize).append(prevColor);
 
-                prevColor = color;
+                prevColor = AsciiColor::AsciiColors.at(color);
 
                 StringHelper::ReplaceString replaceString
                 {
@@ -255,6 +240,25 @@ namespace eLog {
                 std::string mStr;
                 std::vector<StringHelper::ReplaceString> mReplaceStrings;
         };
+
+        std::string getCurrentDateAsString()
+        {
+            std::time_t currentTime = std::time(nullptr);
+            std::tm* localTime = std::localtime(&currentTime);
+            std::ostringstream oss;
+            oss << std::put_time(localTime, "%b %d, %Y");
+            return oss.str();
+        }
+
+        std::string getCurrentTimeAsString()
+        {
+            std::time_t currentTime = std::time(nullptr);
+            std::tm* localTime = std::localtime(&currentTime);
+            std::ostringstream oss;
+            oss << std::put_time(localTime, "%H:%M:%S");
+            return oss.str();
+            
+        }
     } // namespace StringHelper
 
     namespace State
@@ -295,15 +299,15 @@ namespace eLog {
             std::string mColor;
         };
 
-        constexpr LogLevel DEBUG = { "DEBUG", AsciiColor::BOLD_BLUE };
-        constexpr LogLevel INFO = { "INFO", AsciiColor::BOLD_GREEN };
-        constexpr LogLevel WARNING = { "WARNING", AsciiColor::BOLD_YELLOW };
-        constexpr LogLevel ERROR = { "ERROR", AsciiColor::BOLD_RED };
-        constexpr LogLevel FATAL = { "FATAL", AsciiColor::BOLD_MAGENTA };
+        const LogLevel DEBUG    = { "DEBUG",    AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_BLUE) };
+        const LogLevel INFO     = { "INFO",     AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_GREEN) };
+        const LogLevel WARNING  = { "WARNING",  AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_YELLOW) };
+        const LogLevel ERROR    = { "ERROR",    AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_RED) };
+        const LogLevel FATAL    = { "FATAL",    AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_MAGENTA) };
 
         std::string getLogLevelString(const LogLevel& logLevel)
         {
-            return std::string(logLevel.mColor).append(logLevel.mLogLevel).append(AsciiColor::RESET);
+            return std::string(logLevel.mColor).append(logLevel.mLogLevel).append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
         }
     } // namespace LogLevel
 
@@ -321,15 +325,19 @@ namespace eLog {
 
         constexpr const char* LogInfoFmt = "{}[{} | {} | {} | {} | {}]{}";
 
-        LogInfo getLogInfo(const std::source_location& src)
+#ifdef __clang__
+        LogInfo getLogInfo(const std::experimental::source_location& src)
+#else
+        LogInfo getLogInfo(std::source_location src)
+#endif
         {
             return LogInfo {
-                .mColor = AsciiColor::BOLD_WHITE,
+                .mColor = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE),
                 .mFile = src.file_name(),
                 .mFunction = src.function_name(),
                 .mLine = std::to_string(src.line()),
-                .mDate = __DATE__,
-                .mTime = __TIME__,
+                .mDate = StringHelper::getCurrentDateAsString(),
+                .mTime = StringHelper::getCurrentTimeAsString(),
             };
         }
 
@@ -343,7 +351,7 @@ namespace eLog {
             fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mFile.filename().string());
             fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mFunction);
             fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mLine);
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, AsciiColor::RESET);
+            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
 
             return fmtLogInfo;
         }
@@ -361,7 +369,11 @@ namespace eLog {
             std::mutex Data::mtx;
         }
 
-        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, const std::experimental::source_location& src)
+#else
+        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, std::source_location src)
+#endif
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
@@ -372,7 +384,11 @@ namespace eLog {
                 std::cout.flush();
         }
 
-        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, const std::experimental::source_location& src)
+#else
+        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, const std::source_location& src)
+#endif
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
@@ -406,14 +422,18 @@ namespace eLog {
 
         constexpr const char* FileLogInfoFmt = "[{} | {} | {} | {} | {}]";
 
-        FileLogInfo getFileLogInfo(const std::source_location& src)
+#ifdef __clang__
+        FileLogInfo getFileLogInfo(const std::experimental::source_location& src)
+#else
+        FileLogInfo getFileLogInfo(std::source_location src)
+#endif
         {
             return FileLogInfo {
                 .mFile = src.file_name(),
                 .mFunction = src.function_name(),
                 .mLine = std::to_string(src.line()),
-                .mDate = __DATE__,
-                .mTime = __TIME__,
+                .mDate = StringHelper::getCurrentDateAsString(),
+                .mTime = StringHelper::getCurrentTimeAsString(),
             };
         }
 
@@ -441,6 +461,12 @@ namespace eLog {
                 std::filesystem::path mPath;
                 std::ofstream mStream;
                 std::mutex mtx;
+
+                FileLogger() = default;
+
+                FileLogger(std::ios_base::openmode openMode, const std::filesystem::path& path)
+                : mOpenMode(openMode), mPath(path)
+                {}
             };
 
             struct Data
@@ -465,7 +491,11 @@ namespace eLog {
                 return Impl::Data::DefaultFileLogger;
         }
 
-        void log(const char* logLevel, std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+        void log(const char* logLevel, std::string_view msg, const std::experimental::source_location& src)
+#else
+        void log(const char* logLevel, std::string_view msg, std::source_location src)
+#endif
         {
             std::string fmtFileLogInfo = FileLogInfo::getFmtFileLogInfo(FileLogInfo::getFileLogInfo(src));
 
@@ -500,15 +530,15 @@ namespace eLog {
         struct Colorize
         {
             std::string str;
-            std::string color;
+            AsciiColor::ColorEnum color;
             bool replaceAllMatching = false;
         };
 
-        Colorize colorize(std::string_view str, const char* color, bool replaceAllMatching = false)
+        Colorize colorize(std::string_view str, AsciiColor::ColorEnum color, bool replaceAllMatching = false)
         {
             return Colorize { 
                 .str = std::string(str),
-                .color = std::string(color),
+                .color = color,
                 .replaceAllMatching = replaceAllMatching
             };
         }
@@ -517,7 +547,7 @@ namespace eLog {
         {
             for(const auto& colorizedString : colorizedStrings)
             {
-                str.setColor(colorizedString.str, colorizedString.color.c_str(), colorizedString.replaceAllMatching);
+                str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
             }
             str.colorize();
         }
@@ -560,12 +590,15 @@ namespace eLog {
     bool AddCustomFileLogger(std::string_view FileLoggerName, const std::filesystem::path& path, std::ios_base::openmode openMode = std::ios::app)
     {
         std::scoped_lock lock(State::Data::mtx);
-        auto [it, success] = FileLogImpl::Impl::Data::FileLoggers.try_emplace(std::string(FileLoggerName),
-                            openMode, path, std::ofstream(path, openMode));
+        auto [it, success] = FileLogImpl::Impl::Data::FileLoggers.try_emplace(std::string(FileLoggerName), openMode, path);
         return success;
     }
 
-    void logDebug(std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+    void logDebug(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logDebug(std::string_view msg, const std::source_location src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
             LogImpl::log(LogLevel::DEBUG, msg, src);
@@ -573,7 +606,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::DEBUG, msg, src);
     }
 
-    void logInfo(std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+    void logInfo(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logInfo(std::string_view msg, const std::source_location src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
             LogImpl::log(LogLevel::INFO, msg, src);
@@ -581,7 +618,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::INFO, msg, src);
     }
 
-    void logWarning(std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+    void logWarning(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logWarning(std::string_view msg, const std::source_location src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
             LogImpl::log(LogLevel::WARNING, msg, src);
@@ -589,15 +630,22 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::WARNING, msg, src);
     }
 
-    void logError(std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+    void logError(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logError(std::string_view msg, const std::source_location src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
             LogImpl::log(LogLevel::ERROR, msg, src);
         if(State::Data::IsFileLogEnabled)
             FileLogImpl::log(FileLogLevel::ERROR, msg, src);
     }
-
-    void logFatal(std::string_view msg, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+    void logFatal(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logFatal(std::string_view msg, const std::source_location src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
             LogImpl::log(LogLevel::FATAL, msg, src);
@@ -605,7 +653,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::FATAL, msg, src);
     }
 
-    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+#ifdef __clang__
+    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
         {
@@ -617,7 +669,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::DEBUG, msg, src);
     }
 
+#ifdef __clang__
+    void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
     void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
         {
@@ -629,7 +685,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::INFO, msg, src);
     }
 
+#ifdef __clang__
+    void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
     void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
         {
@@ -641,7 +701,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::WARNING, msg, src);
     }
 
+#ifdef __clang__
+    void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
     void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+#endif
     {
         if(State::Data::IsConsoleLogEnabled)
         {
@@ -653,7 +717,11 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::ERROR, msg, src);
     }
 
+#ifdef __clang__
+    void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
     void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+#endif
     {   
         if(State::Data::IsConsoleLogEnabled)
         {
@@ -665,4 +733,3 @@ namespace eLog {
             FileLogImpl::log(FileLogLevel::FATAL, msg, src);
     }
 } // namespace eLog
-#endif
