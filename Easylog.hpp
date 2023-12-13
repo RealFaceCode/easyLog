@@ -246,7 +246,7 @@ namespace eLog {
             std::time_t currentTime = std::time(nullptr);
             std::tm* localTime = std::localtime(&currentTime);
             std::ostringstream oss;
-            oss << std::put_time(localTime, "%b %d, %Y");
+            oss << std::put_time(localTime, "%b %d %Y");
             return oss.str();
         }
 
@@ -265,31 +265,74 @@ namespace eLog {
     {
         struct Data
         {
+            static std::mutex mtx;
+            static std::string FileLoggerName;
             static bool IsFileLogEnabled;
             static bool IsConsoleLogEnabled;
             static bool IsColorEnabled;
             static bool UseDefaultFileLog;
             static bool DirectFlush;
-            static std::string FileLoggerName;
-            static std::mutex mtx;
+            static bool BufferLogEnabled;
+            static bool BufferLog;
+            static bool BufferLogLabel;
+            static bool BufferFileLog;
+            static bool BufferFileLogLabel;
         };
 
+        std::mutex Data::mtx;
+        std::string Data::FileLoggerName = "";
         bool Data::IsFileLogEnabled = false;
         bool Data::IsConsoleLogEnabled = true;
         bool Data::IsColorEnabled = AsciiColor::CheckIfColorIsSupported();
         bool Data::UseDefaultFileLog = true;
         bool Data::DirectFlush = false;
-        std::string Data::FileLoggerName = "";
-        std::mutex Data::mtx;
+        bool Data::BufferLogEnabled = false;
+        bool Data::BufferLog = false;
+        bool Data::BufferLogLabel = false;
+        bool Data::BufferFileLog = false;
+        bool Data::BufferFileLogLabel = false;
+
+        bool IsBuffering() {
+            return (State::Data::BufferLog || State::Data::BufferLogLabel || State::Data::BufferFileLog || State::Data::BufferFileLogLabel);
+        }
 
         enum class StateEnum
         {
             TERMINAL_LOG,
             FILE_LOG,
             DEFAULT_FILE_LOG,
-            DIRECT_FLUSH
+            DIRECT_FLUSH,
+            BUFFER_LOG,
+            BUFFER_LOG_LABEL,
+            BUFFER_FILE_LOG,
+            BUFFER_FILE_LOG_LABEL
         };
-    }
+    } // namespace State
+
+    namespace LogLabel
+    {
+        namespace Impl
+        {
+            using Label = std::string_view;
+
+            struct Data
+            {
+                static std::string mLabelColor;
+            };
+
+            std::string Data::mLabelColor = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE);
+        } // namespace Impl
+
+        std::string getLabelStringLog(const Impl::Label& label)
+        {
+            return std::string(Impl::Data::mLabelColor).append("[").append(label).append("]").append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
+        }
+
+        std::string getLabelStringFileLog(const Impl::Label& label)
+        {
+            return std::string("[").append(label).append("]");
+        }
+    } // namespace LogLabel
 
     namespace LogLevel
     {
@@ -328,7 +371,7 @@ namespace eLog {
 #ifdef __clang__
         LogInfo getLogInfo(const std::experimental::source_location& src)
 #else
-        LogInfo getLogInfo(std::source_location src)
+        LogInfo getLogInfo(const std::source_location& src)
 #endif
         {
             return LogInfo {
@@ -367,34 +410,50 @@ namespace eLog {
             };
 
             std::mutex Data::mtx;
-        }
+        } // namespace Impl
 
 #ifdef __clang__
-        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, const std::experimental::source_location& src)
+        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, LogLabel::Impl::Label label, const std::experimental::source_location& src)
 #else
-        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, std::source_location src)
+        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, LogLabel::Impl::Label label, const std::source_location& src)
 #endif
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
             std::string logLevelString = LogLevel::getLogLevelString(logLevel);
             std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
-            std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << msg << std::endl;
+            std::string labelString;
+            if(label != "default")
+            {
+                labelString = LogLabel::getLabelStringLog(label);
+                std::cout << logLevelString << "\t: " << labelString << " " << fmtLogInfo << " : " << msg << std::endl;
+            }
+            else
+                std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << msg << std::endl;
+
             if(State::Data::DirectFlush)
                 std::cout.flush();
         }
 
 #ifdef __clang__
-        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, const std::experimental::source_location& src)
+        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, LogLabel::Impl::Label label, const std::experimental::source_location& src)
 #else
-        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, const std::source_location& src)
+        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, LogLabel::Impl::Label label, const std::source_location& src)
 #endif
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
             std::string logLevelString = LogLevel::getLogLevelString(logLevel);
             std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
-            std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << colorizedString << std::endl;
+            std::string labelString = "";
+            if(label != "default")
+            {
+                labelString = LogLabel::getLabelStringLog(label);
+                std::cout << logLevelString << "\t: " << labelString << " " << fmtLogInfo << " : " << colorizedString << std::endl;
+            }
+            else
+                std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << colorizedString << std::endl;
+
             if(State::Data::DirectFlush)
                 std::cout.flush();
         }
@@ -477,7 +536,7 @@ namespace eLog {
 
             FileLogger Data::DefaultFileLogger = FileLogger{std::ios_base::app, "log.txt"};
             std::unordered_map<std::string, FileLogger, StringHelper::StringHash, std::equal_to<>> Data::FileLoggers;
-        }
+        } // namespace Impl
 
         Impl::FileLogger& GetFileLogger(std::string_view FileLoggerName)
         {
@@ -492,21 +551,28 @@ namespace eLog {
         }
 
 #ifdef __clang__
-        void log(const char* logLevel, std::string_view msg, const std::experimental::source_location& src)
+        void log(std::string_view logLevel, std::string_view msg, LogLabel::Impl::Label label, const std::experimental::source_location& src)
 #else
-        void log(const char* logLevel, std::string_view msg, std::source_location src)
+        void log(std::string_view logLevel, std::string_view msg, LogLabel::Impl::Label label, std::source_location src)
 #endif
         {
             std::string fmtFileLogInfo = FileLogInfo::getFmtFileLogInfo(FileLogInfo::getFileLogInfo(src));
-
+            std::string labelString;
+            if(label != "default")
+                labelString = LogLabel::getLabelStringFileLog(label);
+            
             if(State::Data::UseDefaultFileLog)
             {
                 std::scoped_lock lock(Impl::Data::DefaultFileLogger.mtx);
 
                 if(!Impl::Data::DefaultFileLogger.mStream.is_open())
                     Impl::Data::DefaultFileLogger.mStream.open(Impl::Data::DefaultFileLogger.mPath, Impl::Data::DefaultFileLogger.mOpenMode);
-
-                Impl::Data::DefaultFileLogger.mStream << logLevel << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
+                
+                if(labelString.empty())
+                    Impl::Data::DefaultFileLogger.mStream << logLevel << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
+                else
+                    Impl::Data::DefaultFileLogger.mStream << logLevel << "\t: " << labelString << " " << fmtFileLogInfo << " : " << msg << std::endl;
+                    
                 if(State::Data::DirectFlush)
                     Impl::Data::DefaultFileLogger.mStream.flush();
             }
@@ -518,12 +584,96 @@ namespace eLog {
                 if(!fileLogger.mStream.is_open())
                     fileLogger.mStream.open(fileLogger.mPath, fileLogger.mOpenMode);
 
-                fileLogger.mStream << logLevel << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
+                if(labelString.empty())
+                    fileLogger.mStream << logLevel << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
+                else
+                    fileLogger.mStream << logLevel << "\t: " << labelString << " " << fmtFileLogInfo << " : " << msg << std::endl;
+
                 if(State::Data::DirectFlush)
                     fileLogger.mStream.flush();
             }
+        } 
+    } // namespace FileLogImpl
+
+    namespace LogBufferImpl
+    {
+        namespace Impl
+        {
+            struct Data
+            {
+                static std::mutex mtx;
+                static std::vector<std::string> mLogBuffer;
+                static std::vector<std::string> mFileLogBuffer;
+                static std::unordered_map<std::string, std::vector<std::string>> mLogBufferLabel;
+                static std::unordered_map<std::string, std::vector<std::string>> mFileLogBufferLabel;
+            };
+
+            std::mutex Data::mtx;
+            std::vector<std::string> Data::mLogBuffer;
+            std::vector<std::string> Data::mFileLogBuffer;
+            std::unordered_map<std::string, std::vector<std::string>> Data::mLogBufferLabel;
+            std::unordered_map<std::string, std::vector<std::string>> Data::mFileLogBufferLabel;
+        } // namespace Impl
+
+#ifdef __clang__
+        void log(LogLevel::LogLevel level, std::string_view msg, LogLabel::Impl::Label label, const std::experimental::source_location& src)
+#else
+        void log(LogLevel::LogLevel level, std::string_view msg, LogLabel::Impl::Label label, const std::source_location& src)
+#endif
+        {
+            std::scoped_lock lock(Impl::Data::mtx);
+
+            std::string logLevelString = LogLevel::getLogLevelString(level);
+            std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
+            std::string labelString;
+            if(label != "default")
+                labelString = LogLabel::getLabelStringLog(label);
+
+            if(labelString.empty())
+            {
+                if(State::Data::BufferLog)
+                    Impl::Data::mLogBuffer.emplace_back(logLevelString).append("\t: ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+                if(State::Data::BufferLogLabel)
+                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(logLevelString).append("\t: ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+            }
+            else
+            {
+                if(State::Data::BufferLog)
+                    Impl::Data::mLogBuffer.emplace_back(logLevelString).append("\t: ").append(labelString).append(" ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+                if(State::Data::BufferLogLabel)
+                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(logLevelString).append("\t: ").append(labelString).append(" ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+            }    
         }
-    }
+
+#ifdef __clang__
+        void fileLog(std::string_view level, std::string_view msg, LogLabel::Impl::Label label, const std::experimental::source_location& src)
+#else
+        void fileLog(std::string_view level, std::string_view msg, LogLabel::Impl::Label label, const std::source_location& src)
+#endif
+        {
+            std::scoped_lock lock(Impl::Data::mtx);
+
+            std::string fmtFileLogInfo = FileLogInfo::getFmtFileLogInfo(FileLogInfo::getFileLogInfo(src));
+            std::string labelString;
+            if(label != "default")
+                labelString = LogLabel::getLabelStringFileLog(label);
+
+            if(labelString.empty())
+            {
+                if(State::Data::BufferFileLog)
+                    Impl::Data::mFileLogBuffer.emplace_back(level).append("\t: ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
+                if(State::Data::BufferFileLogLabel)
+                    Impl::Data::mFileLogBufferLabel[std::string(label)].emplace_back(level).append("\t: ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
+            }
+            else
+            {
+                if(State::Data::BufferFileLog)
+                    Impl::Data::mFileLogBuffer.emplace_back(level).append("\t: ").append(labelString).append(" ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
+                if(State::Data::BufferFileLogLabel)
+                    Impl::Data::mFileLogBufferLabel[std::string(label)].emplace_back(level).append("\t: ").append(labelString).append(" ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
+            }
+        }
+    } // namespace BufferLogImpL
 
     namespace Colorize
     {
@@ -572,6 +722,22 @@ namespace eLog {
             case DIRECT_FLUSH:
                 State::Data::DirectFlush = isEnabled;
                 break;
+            case BUFFER_LOG:
+                State::Data::BufferLog = isEnabled;
+                State::Data::BufferLogEnabled = State::IsBuffering();
+                break;
+            case BUFFER_LOG_LABEL:
+                State::Data::BufferLogLabel = isEnabled;
+                State::Data::BufferLogEnabled = State::IsBuffering();
+                break;
+            case BUFFER_FILE_LOG:
+                State::Data::BufferFileLog = isEnabled;
+                State::Data::BufferLogEnabled = State::IsBuffering();
+                break;
+            case BUFFER_FILE_LOG_LABEL:
+                State::Data::BufferFileLogLabel = isEnabled;
+                State::Data::BufferLogEnabled = State::IsBuffering();
+                break;
         }
     }
 
@@ -594,142 +760,223 @@ namespace eLog {
         return success;
     }
 
-#ifdef __clang__
-    void logDebug(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
-#else
-    void logDebug(std::string_view msg, const std::source_location src = std::source_location::current())
-#endif
+    std::vector<std::string> GetLogBuffer()
     {
-        if(State::Data::IsConsoleLogEnabled)
-            LogImpl::log(LogLevel::DEBUG, msg, src);
-        if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::DEBUG, msg, src);
+        return LogBufferImpl::Impl::Data::mLogBuffer;
+    }
+
+    std::vector<std::string> GetFileLogBuffer()
+    {
+        return LogBufferImpl::Impl::Data::mFileLogBuffer;
+    }
+
+    std::unordered_map<std::string, std::vector<std::string>> GetLogBufferLabel()
+    {
+        return LogBufferImpl::Impl::Data::mLogBufferLabel;
+    }
+
+    std::unordered_map<std::string, std::vector<std::string>> GetFileLogBufferLabel()
+    {
+        return LogBufferImpl::Impl::Data::mFileLogBufferLabel;
+    }
+
+    std::vector<std::string> GetLogBufferByLabel(LogLabel::Impl::Label label)
+    {
+        if(LogBufferImpl::Impl::Data::mLogBufferLabel.contains(std::string(label)))
+            return LogBufferImpl::Impl::Data::mLogBufferLabel[std::string(label)];
+        return std::vector<std::string>();
+    }
+
+    std::vector<std::string> GetFileLogBufferByLabel(LogLabel::Impl::Label label)
+    {
+        if(LogBufferImpl::Impl::Data::mFileLogBufferLabel.contains(std::string(label)))
+            return LogBufferImpl::Impl::Data::mFileLogBufferLabel[std::string(label)];
+        return std::vector<std::string>();
     }
 
 #ifdef __clang__
-    void logInfo(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
+    void logDebug(std::string_view msg, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
 #else
-    void logInfo(std::string_view msg, const std::source_location src = std::source_location::current())
+    void logDebug(std::string_view msg, LogLabel::Impl::Label label = "default", const std::source_location src = std::source_location::current())
 #endif
     {
         if(State::Data::IsConsoleLogEnabled)
-            LogImpl::log(LogLevel::INFO, msg, src);
+            LogImpl::log(LogLevel::DEBUG, msg, label, src);
         if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::INFO, msg, src);
-    }
-
-#ifdef __clang__
-    void logWarning(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
-#else
-    void logWarning(std::string_view msg, const std::source_location src = std::source_location::current())
-#endif
-    {
-        if(State::Data::IsConsoleLogEnabled)
-            LogImpl::log(LogLevel::WARNING, msg, src);
-        if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::WARNING, msg, src);
-    }
-
-#ifdef __clang__
-    void logError(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
-#else
-    void logError(std::string_view msg, const std::source_location src = std::source_location::current())
-#endif
-    {
-        if(State::Data::IsConsoleLogEnabled)
-            LogImpl::log(LogLevel::ERROR, msg, src);
-        if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::ERROR, msg, src);
-    }
-#ifdef __clang__
-    void logFatal(std::string_view msg, const std::experimental::source_location& src = std::experimental::source_location::current())
-#else
-    void logFatal(std::string_view msg, const std::source_location src = std::source_location::current())
-#endif
-    {
-        if(State::Data::IsConsoleLogEnabled)
-            LogImpl::log(LogLevel::FATAL, msg, src);
-        if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::FATAL, msg, src);
-    }
-
-#ifdef __clang__
-    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
-#else
-    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location src = std::source_location::current())
-#endif
-    {
-        if(State::Data::IsConsoleLogEnabled)
+            FileLogImpl::log(FileLogLevel::DEBUG, msg, label, src);
+        if(State::Data::BufferLogEnabled)
         {
-            StringHelper::ColorizedString colorizedString(msg);
-            Colorize::createColorizedString(colorizedString, colorizeStrings);
-            LogImpl::log(LogLevel::DEBUG, colorizedString, src);
+            LogBufferImpl::log(LogLevel::FATAL, msg, label, src);
+            LogBufferImpl::fileLog(FileLogLevel::DEBUG, msg, label, src);
         }
-        if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::DEBUG, msg, src);
     }
 
 #ifdef __clang__
-    void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+    void logInfo(std::string_view msg, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
 #else
-    void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+    void logInfo(std::string_view msg, LogLabel::Impl::Label label = "default", const std::source_location src = std::source_location::current())
 #endif
     {
         if(State::Data::IsConsoleLogEnabled)
-        {
-            StringHelper::ColorizedString colorizedString(msg);
-            Colorize::createColorizedString(colorizedString, colorizeStrings);  
-            LogImpl::log(LogLevel::INFO, colorizedString, src);
-        }
+            LogImpl::log(LogLevel::INFO, msg, label, src);
         if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::INFO, msg, src);
+            FileLogImpl::log(FileLogLevel::INFO, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, msg, label, src);
+            LogBufferImpl::fileLog(FileLogLevel::INFO, msg, label, src);
+        }
     }
 
 #ifdef __clang__
-    void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+    void logWarning(std::string_view msg, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
 #else
-    void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+    void logWarning(std::string_view msg, LogLabel::Impl::Label label = "default", const std::source_location src = std::source_location::current())
 #endif
     {
         if(State::Data::IsConsoleLogEnabled)
-        {
-            StringHelper::ColorizedString colorizedString(msg);
-            Colorize::createColorizedString(colorizedString, colorizeStrings);
-            LogImpl::log(LogLevel::WARNING, colorizedString, src);
-        }
+            LogImpl::log(LogLevel::WARNING, msg, label, src);
         if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::WARNING, msg, src);
+            FileLogImpl::log(FileLogLevel::WARNING, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, msg, label, src);
+            LogBufferImpl::fileLog(FileLogLevel::WARNING, msg, label, src);
+        }
     }
 
 #ifdef __clang__
-    void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+    void logError(std::string_view msg, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
 #else
-    void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+    void logError(std::string_view msg, LogLabel::Impl::Label label = "default", const std::source_location src = std::source_location::current())
 #endif
     {
         if(State::Data::IsConsoleLogEnabled)
-        {
-            StringHelper::ColorizedString colorizedString(msg);
-            Colorize::createColorizedString(colorizedString, colorizeStrings);
-            LogImpl::log(LogLevel::ERROR, colorizedString, src);
-        }
+            LogImpl::log(LogLevel::ERROR, msg, label, src);
         if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::ERROR, msg, src);
+            FileLogImpl::log(FileLogLevel::ERROR, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, msg, label, src);
+            LogBufferImpl::fileLog(FileLogLevel::ERROR, msg, label, src);
+        }
     }
 
 #ifdef __clang__
-    void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::experimental::source_location& src = std::experimental::source_location::current())
+    void logFatal(std::string_view msg, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
 #else
-    void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, const std::source_location& src = std::source_location::current())
+    void logFatal(std::string_view msg, LogLabel::Impl::Label label = "default", const std::source_location src = std::source_location::current())
+#endif
+    {
+        if(State::Data::IsConsoleLogEnabled)
+            LogImpl::log(LogLevel::FATAL, msg, label, src);
+        if(State::Data::IsFileLogEnabled)
+            FileLogImpl::log(FileLogLevel::FATAL, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, msg, label, src);
+            LogBufferImpl::fileLog(FileLogLevel::FATAL, msg, label, src);
+        }
+    }
+
+#ifdef __clang__
+    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings,  LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings,  LogLabel::Impl::Label label = "default", const std::source_location src = std::source_location::current())
+#endif
+    {
+        StringHelper::ColorizedString colorizedString(msg);
+        Colorize::createColorizedString(colorizedString, colorizeStrings);
+
+        if(State::Data::IsConsoleLogEnabled)
+            LogImpl::log(LogLevel::DEBUG, colorizedString, label, src);
+        if(State::Data::IsFileLogEnabled)
+            FileLogImpl::log(FileLogLevel::DEBUG, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, colorizedString.getColorizedString(), label, src);
+            LogBufferImpl::fileLog(FileLogLevel::DEBUG, msg, label, src);
+        }
+    }
+
+#ifdef __clang__
+    void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::source_location& src = std::source_location::current())
+#endif
+    {
+        StringHelper::ColorizedString colorizedString(msg);
+        Colorize::createColorizedString(colorizedString, colorizeStrings);
+
+        if(State::Data::IsConsoleLogEnabled)
+            LogImpl::log(LogLevel::INFO, colorizedString, label, src);
+        if(State::Data::IsFileLogEnabled)
+            FileLogImpl::log(FileLogLevel::DEBUG, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, colorizedString.getColorizedString(), label, src);
+            LogBufferImpl::fileLog(FileLogLevel::INFO, msg, label, src);
+
+        }
+    }
+
+#ifdef __clang__
+    void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::source_location& src = std::source_location::current())
+#endif
+    {
+        StringHelper::ColorizedString colorizedString(msg);
+        Colorize::createColorizedString(colorizedString, colorizeStrings);
+
+        if(State::Data::IsConsoleLogEnabled)
+            LogImpl::log(LogLevel::WARNING, colorizedString, label, src);
+        if(State::Data::IsFileLogEnabled)
+            FileLogImpl::log(FileLogLevel::DEBUG, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, colorizedString.getColorizedString(), label, src);
+            LogBufferImpl::fileLog(FileLogLevel::WARNING, msg, label, src);
+        }
+    }
+
+#ifdef __clang__
+    void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::source_location& src = std::source_location::current())
+#endif
+    {
+        StringHelper::ColorizedString colorizedString(msg);
+        Colorize::createColorizedString(colorizedString, colorizeStrings);
+
+        if(State::Data::IsConsoleLogEnabled)
+            LogImpl::log(LogLevel::ERROR, colorizedString, label, src);
+        if(State::Data::IsFileLogEnabled)
+            FileLogImpl::log(FileLogLevel::DEBUG, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, colorizedString.getColorizedString(), label, src);
+            LogBufferImpl::fileLog(FileLogLevel::ERROR, msg, label, src);
+        }
+    }
+
+#ifdef __clang__
+    void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::experimental::source_location& src = std::experimental::source_location::current())
+#else
+    void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const std::source_location& src = std::source_location::current())
 #endif
     {   
+        StringHelper::ColorizedString colorizedString(msg);
+        Colorize::createColorizedString(colorizedString, colorizeStrings);
+
         if(State::Data::IsConsoleLogEnabled)
-        {
-            StringHelper::ColorizedString colorizedString(msg);
-            Colorize::createColorizedString(colorizedString, colorizeStrings);
-            LogImpl::log(LogLevel::FATAL, colorizedString, src);
-        }
+            LogImpl::log(LogLevel::FATAL, colorizedString, label, src);
         if(State::Data::IsFileLogEnabled)
-            FileLogImpl::log(FileLogLevel::FATAL, msg, src);
+            FileLogImpl::log(FileLogLevel::DEBUG, msg, label, src);
+        if(State::Data::BufferLogEnabled)
+        {
+            LogBufferImpl::log(LogLevel::FATAL, colorizedString.getColorizedString(), label, src);
+            LogBufferImpl::fileLog(FileLogLevel::FATAL, msg, label, src);
+        }
     }
 } // namespace eLog
