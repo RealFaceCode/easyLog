@@ -654,7 +654,7 @@ namespace eLog {
             if(label != "default")
                 labelString = LogLabel::getLabelStringFileLog(label);
 
-             std::string level = LogLevel::getLogLevelString(logLevel, false);
+            std::string level = LogLevel::getLogLevelString(logLevel, false);
 
             if(labelString.empty())
             {
