@@ -25,8 +25,8 @@ void workerThread()
 
 int main()
 {
-    eLog::SetState(eLog::State::StateEnum::DIRECT_FLUSH, true);
-    eLog::SetState(eLog::State::StateEnum::FILE_LOG, true);
+    eLog::State::SetState(eLog::State::StateEnum::DIRECT_FLUSH, true);
+    eLog::State::SetState(eLog::State::StateEnum::FILE_LOG, true);
 
     std::thread worker(::workerThread);
     for(int i = 0; i < 15; i++)
