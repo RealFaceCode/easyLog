@@ -116,7 +116,7 @@ int main()
 
 ![easylogexample](images/easyLogExample.png)
 
-Example to enable looging to a file
+Example to enable logging to a file
 
 ```cpp
 int main()
