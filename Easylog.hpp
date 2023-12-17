@@ -738,7 +738,7 @@ namespace eLog {
             std::string mTime;
         };
 
-        constexpr const char* LogInfoFmt = "{}[{} | {} | {} | {} | {}]{}";
+        static const std::string LogInfoFmt("{}[{} | {} | {} | {} | {}]{}");
 
         /**
          * @brief Gets the log information for a log message.
@@ -896,7 +896,7 @@ namespace eLog {
             std::string mTime;
         };
 
-        constexpr const char* FileLogInfoFmt = "[{} | {} | {} | {} | {}]";
+        static const std::string FileLogInfoFmt("[{} | {} | {} | {} | {}]");
 
         /**
          * @brief Gets the file log information for a log message.
