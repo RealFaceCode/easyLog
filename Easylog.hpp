@@ -767,6 +767,11 @@ namespace eLog {
             return LogBufferImpl::Impl::Data::mLogBuffer;
         }
 
+        std::vector<std::string> GetFileLogBuffer()
+        {
+            return LogBufferImpl::Impl::Data::mFileLogBuffer;
+        }
+
         std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> GetLogBufferLabel()
         {
             return LogBufferImpl::Impl::Data::mLogBufferLabel;
