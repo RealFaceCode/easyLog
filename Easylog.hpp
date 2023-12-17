@@ -1591,7 +1591,7 @@ namespace eLog {
             std::vector<std::string> ArgsToVector(Args&& ... args)
             {
                 std::vector<std::string> vals;
-                auto [t, s] = GetArgsAsTulpe(std::forward<Args>(args)...);
+                auto [t, s] = GetArgsAsTuple(std::forward<Args>(args)...);
                 ToString(vals, t);
                 return vals;
             }

@@ -2,7 +2,7 @@
 
 int main(int, char**)
 {
-    auto [t, s] = eLog::fmt::Impl::GetArgsAsTulpe(1, 2, 3, 4, 5, "hello world", 7, 8, 9, 3.14, 3.15, 3.16, 3.17, 3.18, 3.19, true, false);
+    auto [t, s] = eLog::fmt::Impl::GetArgsAsTuple(1, 2, 3, 4, 5, "hello world", 7, 8, 9, 3.14, 3.15, 3.16, 3.17, 3.18, 3.19, true, false);
     assert((s == 17) && "tuple size failed");
     std::vector<std::string> vals;
     eLog::fmt::Impl::ToString(vals, t);
