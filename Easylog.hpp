@@ -1613,7 +1613,7 @@ namespace eLog {
             std::string result = fmt.data();
             for (size_t i = 0; i < vals.size(); ++i)
             {
-                std::string_view key = "{" + std::to_string(i) + "}"; 
+                std::string key = "{" + std::to_string(i) + "}"; 
 
                 if (auto pos = result.find(key); pos != std::string::npos) // value keys
                     result.replace(pos, key.size(), vals[i]);
