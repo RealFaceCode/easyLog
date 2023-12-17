@@ -1,3 +1,31 @@
+/**
+ * @file Easylog.hpp
+ * @brief Header file for the easyLog library.
+ * 
+ * This file contains the declarations of various classes, enums, and functions
+ * that make up the easyLog library. The library provides functionality for
+ * logging messages to the console and/or a file, with support for colorizing
+ * the output and buffering the log messages.
+ * 
+ * Features:
+ * - Logging messages to the console and/or a file
+ * - Colorizing the output using ASCII color codes
+ * - Buffering log messages for delayed output
+ * - Support for different log states, such as terminal log, file log, etc.
+ * - Configurable options for enabling/disabling logging, colorization, buffering, etc.
+ * - Utility functions for string manipulation and date/time formatting
+ * - Support for log labels to categorize log messages
+ * 
+ * The library is implemented using C++ standard library features such as
+ * iostream, string, vector, unordered_map, mutex, etc. It also uses
+ * experimental/source_location or source_location (depending on the compiler)
+ * for capturing the source location of log messages.
+ * 
+ * Note: This library assumes that the environment supports ASCII color codes
+ * for colorizing the console output. The CheckIfColorIsSupported() function
+ * can be used to check if the environment supports colorization.
+ */
+
 #pragma once
 
 #include <iostream>
@@ -23,6 +51,8 @@
 #include <source_location>
     using SourceLoc = std::source_location;
 #endif
+
+
 
 namespace eLog {
     namespace AsciiColor
