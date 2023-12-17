@@ -1,5 +1,18 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-green.svg)](https://isocpp.org/std/the-standard )
 ![testcases_workflow](https://github.com/RealFaceCode/easyLog/actions/workflows/main.yml/badge.svg)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=bugs)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=RealFaceCode_easyLog&metric=coverage)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
+
+[![SonarCloud](https://sonarcloud.io/images/project_badges/sonarcloud-white.svg)](https://sonarcloud.io/summary/new_code?id=RealFaceCode_easyLog)
 
 # EasyLog
 
