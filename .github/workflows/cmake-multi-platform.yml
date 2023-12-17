@@ -27,14 +27,11 @@ jobs:
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
-          - os: windows-latest
-            c_compiler: cl
+          - os: windows-latest#
             cpp_compiler: cl
-          - os: ubuntu-latest
-            c_compiler: gcc
+          - os: ubuntu-latest#
             cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: clang
+          - os: ubuntu-latest#
             cpp_compiler: clang++
         exclude:
           - os: windows-latest
@@ -58,7 +55,7 @@ jobs:
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        cmake -B ./tests ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
