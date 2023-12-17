@@ -1,26 +1,22 @@
 name: C++ CI
 
-on: 
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push]
 
 jobs:
  build:
-   runs-on: ${{ matrix.os }}
-   strategy:
-     matrix:
-       os: [ubuntu-latest, windows-latest]
-       compiler: ['gcc', 'clang', 'msvc']
-   steps:
-   - uses: actions/checkout@v2
+  runs-on: ${{ matrix.os }}
+  strategy:
+    matrix:
+      os: [ubuntu-latest, windows-latest]
+      compiler: ['gcc', 'clang', 'msvc']
+  steps:
+  - uses: actions/checkout@v2
 
-   - name: Configure with CMake
-     run: cmake -B build -S .
+  - name: Configure with CMake
+    run: cmake -B build -S tests
 
-   - name: Build with CMake
-     run: cmake --build build
+  - name: Build with CMake
+    run: cmake --build build
 
-   - name: Run tests
-     run: ctest --test-dir build
+  - name: Run tests
+    run: ctest --test-dir build
