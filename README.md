@@ -1,5 +1,5 @@
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-green.svg)](https://isocpp.org/std/the-standard )
-![testcases_workflow](https://github.com/RealFaceCode/EasyLog/.github\workflows\main.yml/badge.svg)
+![testcases_workflow](https://github.com/RealFaceCode/EasyLog/.github/workflows/main.yml/badge.svg)
 
 # EasyLog
 
