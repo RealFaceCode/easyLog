@@ -2,6 +2,16 @@
 
 This logging system in C++ supports colored output and string replacement. It includes several functions and data structures to facilitate logging with various log levels and customization options.
 
+## Features
+
+- Logging messages to the console and/or a file
+- Colorizing the output using ASCII color codes
+- Buffering log messages for delayed output
+- Support for different log states, such as terminal log, file log, etc.
+- Configurable options for enabling/disabling logging, colorization, buffering, etc.
+- Utility functions for string manipulation and date/time formatting
+- Support for log labels to categorize log messages
+
 ## Requires
 
 ### Development Environment
