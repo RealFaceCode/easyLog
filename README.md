@@ -133,7 +133,6 @@ Example to enable logging to a file
 ```cpp
 int main()
 {
-
     eLog::State::SetState(eLog::State::StateEnum::FILE_LOG, true);
     eLog::State::SetState(eLog::State::StateEnum::TERMINAL_LOG, false);
     eLog::State::SetDefaultFileLogPath("log.txt");
