@@ -102,6 +102,13 @@ int main()
         eLog::Colorize::colorize("the", eLog::AsciiColor::ColorEnum::GREEN, true)
     });
 
+    std::cout << std::endl;
+
+    eLog::logDebug(eLog::fmt::Format("this is a {} message", "debug"));
+    eLog::logInfo(eLog::fmt::Format("this is a {:s} message", "info"));
+    eLog::logWarning(eLog::fmt::Format("this is a {:s} message {:s}", "warning", "with multiple arguments"));
+    eLog::logError(eLog::fmt::Format("this is a {:s} message {:f2}", "error", 3.1415926535));
+    eLog::logFatal(eLog::fmt::Format("this is a {:s} message {:x4}", "fatal", 255));
     return 0;
 }
 ```

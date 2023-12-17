@@ -6,23 +6,23 @@
 #include <vector>
 #include <stdint.h>
 #include <cstring>
-#ifdef __clang__
-#include <experimental/source_location>
-#else
-#include <source_location>
-#endif
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
 #include <mutex>
 #include <ctime>
+#include <tuple>
+#include <assert.h>
+#include <sstream>
+#include <algorithm>
 
 #ifdef __clang__
+#include <experimental/source_location>
     using SourceLoc = std::experimental::source_location;
 #else
+#include <source_location>
     using SourceLoc = std::source_location;
 #endif
-
 
 namespace eLog {
     namespace AsciiColor
@@ -250,19 +250,20 @@ namespace eLog {
 
         std::string getCurrentDateAsString()
         {
-            std::time_t currentTime = std::time(nullptr);
-            std::tm* localTime = std::localtime(&currentTime);
+            auto currentTime = std::chrono::system_clock::now();
+            auto localTime = std::chrono::system_clock::to_time_t(currentTime);
+            const std::tm* timeInfo = std::localtime(&localTime);
             std::ostringstream oss;
-            oss << std::put_time(localTime, "%b %d %Y");
+            oss << std::put_time(timeInfo, "%b %d %Y");
             return oss.str();
         }
 
         std::string getCurrentTimeAsString()
         {
-            std::time_t currentTime = std::time(nullptr);
-            std::tm* localTime = std::localtime(&currentTime);
+            auto currentTime = std::chrono::system_clock::now();
+            auto localTime = std::chrono::system_clock::to_time_t(currentTime);
             std::ostringstream oss;
-            oss << std::put_time(localTime, "%H:%M:%S");
+            oss << std::put_time(std::localtime(&localTime), "%H:%M:%S");
             return oss.str();
             
         }
@@ -348,28 +349,37 @@ namespace eLog {
     {
         using LogLevel = std::string;
 
-        std::unordered_map<std::string, AsciiColor::ColorEnum> LogLevels = {
-            {"TRACE", AsciiColor::ColorEnum::BOLD_CYAN},
-            {"DEBUG", AsciiColor::ColorEnum::BOLD_BLUE},
-            {"INFO", AsciiColor::ColorEnum::BOLD_GREEN},
-            {"WARNING", AsciiColor::ColorEnum::BOLD_YELLOW},
-            {"ERROR", AsciiColor::ColorEnum::BOLD_RED},
-            {"FATAL", AsciiColor::ColorEnum::BOLD_MAGENTA}
-        };
+        namespace Impl
+        {
+            struct Data
+            {
+                static std::unordered_map<std::string, AsciiColor::ColorEnum, StringHelper::StringHash, std::equal_to<>> LogLevels;
+            };
+            
+            std::unordered_map<std::string, AsciiColor::ColorEnum, StringHelper::StringHash, std::equal_to<>> Data::LogLevels = {
+                {"TRACE", AsciiColor::ColorEnum::BOLD_CYAN},
+                {"DEBUG", AsciiColor::ColorEnum::BOLD_BLUE},
+                {"INFO", AsciiColor::ColorEnum::BOLD_GREEN},
+                {"WARNING", AsciiColor::ColorEnum::BOLD_YELLOW},
+                {"ERROR", AsciiColor::ColorEnum::BOLD_RED},
+                {"FATAL", AsciiColor::ColorEnum::BOLD_MAGENTA}
+            }; // namespace Impl
+        } // namespace Impl
 
         std::string getLogLevelString(const LogLevel& logLevel, bool colorize = true)
         {
-            auto it = LogLevels.find(logLevel);
+            auto it = Impl::Data::LogLevels.find(logLevel);
             if(colorize)
             {
-                if(it != LogLevels.end())
-                    return std::string(AsciiColor::AsciiColors.at(it->second)).append(logLevel).append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
+                using enum eLog::AsciiColor::ColorEnum;
+                if(it != Impl::Data::LogLevels.end())
+                    return std::string(AsciiColor::AsciiColors.at(it->second)).append(logLevel).append(AsciiColor::AsciiColors.at(RESET));
                 else
-                    return std::string(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE)).append("UNKNOWN").append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
+                    return std::string(AsciiColor::AsciiColors.at(BOLD_WHITE)).append("UNKNOWN").append(AsciiColor::AsciiColors.at(RESET));
             }
             else
             {
-                if(it != LogLevels.end())
+                if(it != Impl::Data::LogLevels.end())
                     return logLevel;
                 else
                     return "UNKNOWN";
@@ -391,11 +401,7 @@ namespace eLog {
 
         constexpr const char* LogInfoFmt = "{}[{} | {} | {} | {} | {}]{}";
 
-#ifdef __clang__
-        LogInfo getLogInfo(const std::experimental::source_location& src)
-#else
-        LogInfo getLogInfo(const std::source_location& src)
-#endif
+        LogInfo getLogInfo(const SourceLoc& src)
         {
             return LogInfo {
                 .mColor = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE),
@@ -487,11 +493,7 @@ namespace eLog {
 
         constexpr const char* FileLogInfoFmt = "[{} | {} | {} | {} | {}]";
 
-#ifdef __clang__
-        FileLogInfo getFileLogInfo(const std::experimental::source_location& src)
-#else
-        FileLogInfo getFileLogInfo(std::source_location src)
-#endif
+        FileLogInfo getFileLogInfo(const SourceLoc& src)
         {
             return FileLogInfo {
                 .mFile = src.file_name(),
@@ -608,18 +610,18 @@ namespace eLog {
                 static std::mutex mtx;
                 static std::vector<std::string> mLogBuffer;
                 static std::vector<std::string> mFileLogBuffer;
-                static std::unordered_map<std::string, std::vector<std::string>> mLogBufferLabel;
-                static std::unordered_map<std::string, std::vector<std::string>> mFileLogBufferLabel;
+                static std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> mLogBufferLabel;
+                static std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> mFileLogBufferLabel;
             };
 
             std::mutex Data::mtx;
             std::vector<std::string> Data::mLogBuffer;
             std::vector<std::string> Data::mFileLogBuffer;
-            std::unordered_map<std::string, std::vector<std::string>> Data::mLogBufferLabel;
-            std::unordered_map<std::string, std::vector<std::string>> Data::mFileLogBufferLabel;
+            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mLogBufferLabel;
+            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mFileLogBufferLabel;
         } // namespace Impl
 
-        void log(LogLevel::LogLevel level, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
+        void log(const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
@@ -765,17 +767,12 @@ namespace eLog {
             return LogBufferImpl::Impl::Data::mLogBuffer;
         }
 
-        std::vector<std::string> GetFileLogBuffer()
-        {
-            return LogBufferImpl::Impl::Data::mFileLogBuffer;
-        }
-
-        std::unordered_map<std::string, std::vector<std::string>> GetLogBufferLabel()
+        std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> GetLogBufferLabel()
         {
             return LogBufferImpl::Impl::Data::mLogBufferLabel;
         }
 
-        std::unordered_map<std::string, std::vector<std::string>> GetFileLogBufferLabel()
+        std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> GetFileLogBufferLabel()
         {
             return LogBufferImpl::Impl::Data::mFileLogBufferLabel;
         }
@@ -797,10 +794,124 @@ namespace eLog {
         bool AddLogLevel(std::string_view logLevel, AsciiColor::ColorEnum color)
         {
             std::scoped_lock lock(State::Impl::Data::mtx);
-            auto [it, success] = LogLevel::LogLevels.try_emplace(std::string(logLevel), color);
+            auto [it, success] = LogLevel::Impl::Data::LogLevels.try_emplace(std::string(logLevel), color);
             return success;
         }
     } // namespace State
+
+    namespace fmt
+    {
+        namespace Impl
+        {
+            bool IsNumber(std::string_view str)
+            {
+                return !str.empty() && std::ranges::all_of(str, ::isdigit);
+            }
+
+            std::string stringToHex(const std::string& input)
+            {
+                if(!IsNumber(input))
+                    return "";
+                if(input.find(".") != std::string::npos)
+                    return "";
+
+                long long int i = std::stoll(input);
+                std::stringstream ss;
+                ss << std::uppercase << std::hex << i;
+                return "0x" + ss.str();
+            }
+
+            template<typename... Args>
+            std::pair<std::tuple<Args...>, std::size_t> GetArgsAsTulpe(Args&& ... args)
+            {
+                return std::make_pair(std::tuple<Args...>(std::forward<Args>(args)...), sizeof...(Args));
+            }
+
+            template<std::size_t I = 0, typename... Tp>
+            inline typename std::enable_if<I == sizeof...(Tp), void>::type
+            ToString(std::vector<std::string>& vals, const std::tuple<Tp...>&){}
+
+            template<std::size_t I = 0, typename... Tp>
+            inline typename std::enable_if<I < sizeof...(Tp), void>::type
+            ToString(std::vector<std::string>& vals, const std::tuple<Tp...>& t)
+            {
+                auto value = std::get<I>(t);
+                std::stringstream ss;
+                ss << value;
+                vals.emplace_back(ss.str());
+                ToString<I + 1, Tp...>(vals, t);
+            }
+
+            template<typename... Args>
+            std::vector<std::string> ArgsToVector(Args&& ... args)
+            {
+                std::vector<std::string> vals;
+                auto [t, s] = GetArgsAsTulpe(std::forward<Args>(args)...);
+                ToString(vals, t);
+                return vals;
+            }
+
+            std::string ToHex(std::string_view str)
+            {
+                std::stringstream ss;
+                ss << std::hex << std::stoi(str.data());
+                return ss.str();
+            }
+        } // namespace Impl
+
+        template<typename... Args>
+        std::string Format(std::string_view fmt, Args&& ... args)
+        {
+            std::vector<std::string> vals = Impl::ArgsToVector(std::forward<Args>(args)...);
+            std::string result = fmt.data();
+            for (size_t i = 0; i < vals.size(); ++i)
+            {
+                std::string_view key = "{" + std::to_string(i) + "}"; 
+
+                if (auto pos = result.find(key); pos != std::string::npos) // value keys
+                    result.replace(pos, key.size(), vals[i]);
+                else if(auto pos = result.find("{}"); pos != std::string::npos) // empty keys
+                    result.replace(pos, 2, vals[i]);
+                else if(auto pos = result.find("{ }"); pos != std::string::npos) // empty keys
+                    result.replace(pos, 3, vals[i]);
+                else if(auto pos = result.find("{:"); pos != std::string::npos) // format keys
+                {
+                    auto end = result.find("}", pos);
+                    auto fmt = result.substr(pos + 2, end - pos);
+
+                    if (fmt.find("d") != std::string::npos) // int
+                        result.replace(pos, end - pos + 1, vals[i]);
+                    else if (auto p = fmt.find("f"); p != std::string::npos) // float
+                    {
+                        int precision = 6;
+                        if(p + 1 <= fmt.size() && fmt[p + 1] != '}')
+                            precision = std::stoi(fmt.substr(p + 1, end));
+
+                        if (auto posPersBegin = vals[i].find('.'); posPersBegin != std::string::npos)
+                            vals[i].resize(posPersBegin + precision + 1, '0');
+
+                        result.replace(pos, end - pos + 1, vals[i]);
+                    }
+                    else if (fmt.find("s") != std::string::npos) // string
+                        result.replace(pos, end - pos + 1, vals[i]);
+                    else if (auto p = fmt.find("x"); p != std::string::npos) // hex
+                    {
+                        auto hexVal = Impl::stringToHex(vals[i]);
+
+                        int precision = 0;
+                        if(p + 1 <= fmt.size() && fmt[p + 1] != '}')
+                            precision = std::stoi(fmt.substr(p + 1, end));
+
+                        if(auto posPersBegin = hexVal.find('x'); posPersBegin != std::string::npos && precision >= 1)
+                            hexVal.insert(posPersBegin + 1, precision - hexVal.size() + 2, '0');
+
+                        result.replace(pos, end - pos + 1, hexVal);
+                    }
+                }
+            }
+            return result;
+        }
+    } // namespace fmt
 
     void logCustom(const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
@@ -855,31 +966,31 @@ namespace eLog {
 
     void logTrace(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        logCustom("TRACE", msg, label, src);
+        logCustom("TRACE", msg, colorizeStrings, label, src);
     }
 
     void logDebug(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        logCustom("DEBUG", msg, label, src);
+        logCustom("DEBUG", msg, colorizeStrings, label, src);
     }
 
     void logInfo(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        logCustom("INFO", msg, label, src);
+        logCustom("INFO", msg, colorizeStrings, label, src);
     }
 
     void logWarning(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        logCustom("WARNING", msg, label, src);
+        logCustom("WARNING", msg, colorizeStrings, label, src);
     }
 
     void logError(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        logCustom("ERROR", msg, label, src);
+        logCustom("ERROR", msg, colorizeStrings, label, src);
     }
 
     void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {   
-        logCustom("FATAL", msg, label, src);
+        logCustom("FATAL", msg, colorizeStrings, label, src);
     }
 } // namespace eLog
