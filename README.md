@@ -1,3 +1,5 @@
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-green.svg)](https://isocpp.org/std/the-standard )
+
 # EasyLog
 
 This logging system in C++ supports colored output and string replacement. It includes several functions and data structures to facilitate logging with various log levels and customization options.
