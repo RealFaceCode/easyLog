@@ -16,14 +16,6 @@ jobs:
    steps:
    - uses: actions/checkout@v2
 
-   - name: Install dependencies
-     run: |
-       if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-         choco install cmake
-       else
-         sudo apt-get install -y cmake
-       fi
-
    - name: Configure with CMake
      run: cmake -B build -S .
 
