@@ -109,11 +109,170 @@ int main()
     eLog::logWarning(eLog::fmt::Format("this is a {:s} message {:s}", "warning", "with multiple arguments"));
     eLog::logError(eLog::fmt::Format("this is a {:s} message {:f2}", "error", 3.1415926535));
     eLog::logFatal(eLog::fmt::Format("this is a {:s} message {:x4}", "fatal", 255));
+
     return 0;
 }
 ```
 
-![easylogexample](easyLogExample.png)
+![easylogexample](images/easyLogExample.png)
+
+Example to enable looging to a file
+
+```cpp
+int main()
+{
+
+    eLog::State::SetState(eLog::State::StateEnum::FILE_LOG, true);
+    eLog::State::SetState(eLog::State::StateEnum::TERMINAL_LOG, false);
+    eLog::State::SetDefaultFileLogPath("log.txt");
+
+    eLog::logTrace("Hello World!");
+    eLog::logDebug("Hello World!");
+    eLog::logInfo("Hello World!");
+    eLog::logWarning("Hello World!");
+    eLog::logError("Hello World!");
+    eLog::logFatal("Hello World!");
+
+    return 0;
+}
+```
+
+Example to defines labels for log messages
+
+```cpp
+int main()
+{
+    eLog::logTrace("Hello World!", "GUI");
+    eLog::logDebug("Hello World!", "GFX");
+    eLog::logInfo("Hello World!", "GUI");
+    eLog::logWarning("Hello World!", "GFX");
+    eLog::logError("Hello World!", "GUI");
+    eLog::logFatal("Hello World!", "GFX");
+
+    return 0;
+}
+```
+
+![loglableexample](images/loglableexample.png)
+
+Example to log into internal logbuffers
+
+```cpp
+int main()
+{
+    eLog::State::SetState(eLog::State::StateEnum::FILE_LOG, true);
+    eLog::State::SetState(eLog::State::StateEnum::BUFFER_LOG, true);
+    eLog::State::SetState(eLog::State::StateEnum::BUFFER_LOG_LABEL, true);
+    eLog::State::SetState(eLog::State::StateEnum::BUFFER_FILE_LOG, true);
+    eLog::State::SetState(eLog::State::StateEnum::BUFFER_FILE_LOG_LABEL, true);
+
+    eLog::logTrace("Hello World!", "GUI");
+    eLog::logDebug("Hello World!", "GFX");
+    eLog::logInfo("Hello World!", "GUI");
+    eLog::logWarning("Hello World!", "GFX");
+    eLog::logError("Hello World!", "GUI");
+    eLog::logFatal("Hello World!", "GFX");
+
+    auto b0 = eLog::State::GetLogBuffer();
+    auto b1 = eLog::State::GetFileLogBuffer();
+    auto b2 = eLog::State::GetLogBufferLabel();
+    auto b3 = eLog::State::GetFileLogBufferLabel();
+    auto b4 = eLog::State::GetLogBufferByLabel("GUI");
+    auto b3 = eLog::State::GetFileLogBufferByLabel("GFX");
+
+    return 0;
+}
+```
+
+Example of the fmt::Format function
+
+```cpp
+int main
+{
+    eLog::logTrace(eLog::fmt::Format("hello {}, {}", "World", "!!!"));
+    eLog::logDebug(eLog::fmt::Format("hello {}, {}", "World", "!!!"));
+    eLog::logInfo(eLog::fmt::Format("hello {}, {}", "World", "!!!"));
+    eLog::logWarning(eLog::fmt::Format("hello {}, {}", "World", "!!!"));
+    eLog::logError(eLog::fmt::Format("hello {}, {}", "World", "!!!"));
+    eLog::logFatal(eLog::fmt::Format("hello {}, {}", "World", "!!!"));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("hello { }, { }", "World", "!!!"));
+    eLog::logDebug(eLog::fmt::Format("hello { }, { }", "World", "!!!"));
+    eLog::logInfo(eLog::fmt::Format("hello { }, { }", "World", "!!!"));
+    eLog::logWarning(eLog::fmt::Format("hello { }, { }", "World", "!!!"));
+    eLog::logError(eLog::fmt::Format("hello { }, { }", "World", "!!!"));
+    eLog::logFatal(eLog::fmt::Format("hello { }, { }", "World", "!!!"));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("hello {0}, {1}", "World", "!!!"));
+    eLog::logDebug(eLog::fmt::Format("hello {0}, {1}", "World", "!!!"));
+    eLog::logInfo(eLog::fmt::Format("hello {0}, {1}", "World", "!!!"));
+    eLog::logWarning(eLog::fmt::Format("hello {0}, {1}", "World", "!!!"));
+    eLog::logError(eLog::fmt::Format("hello {0}, {1}", "World", "!!!"));
+    eLog::logFatal(eLog::fmt::Format("hello {0}, {1}", "World", "!!!"));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("hello {1}, {0}", "World", "!!!"));
+    eLog::logDebug(eLog::fmt::Format("hello {1}, {0}", "World", "!!!"));
+    eLog::logInfo(eLog::fmt::Format("hello {1}, {0}", "World", "!!!"));
+    eLog::logWarning(eLog::fmt::Format("hello {1}, {0}", "World", "!!!"));
+    eLog::logError(eLog::fmt::Format("hello {1}, {0}", "World", "!!!"));
+    eLog::logFatal(eLog::fmt::Format("hello {1}, {0}", "World", "!!!"));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("hello {:s}, {:s}", "World", "!!!"));
+    eLog::logDebug(eLog::fmt::Format("hello {:s}, {:s}", "World", "!!!"));
+    eLog::logInfo(eLog::fmt::Format("hello {:s}, {:s}", "World", "!!!"));
+    eLog::logWarning(eLog::fmt::Format("hello {:s}, {:s}", "World", "!!!"));
+    eLog::logError(eLog::fmt::Format("hello {:s}, {:s}", "World", "!!!"));
+    eLog::logFatal(eLog::fmt::Format("hello {:s}, {:s}", "World", "!!!"));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("value 1: {:d} value 2: {:d}", 1, 2));
+    eLog::logDebug(eLog::fmt::Format("value 1: {:d} value 2: {:d}", 1, 2));
+    eLog::logInfo(eLog::fmt::Format("value 1: {:d} value 2: {:d}", 1, 2));
+    eLog::logWarning(eLog::fmt::Format("value 1: {:d} value 2: {:d}", 1, 2));
+    eLog::logError(eLog::fmt::Format("value 1: {:d} value 2: {:d}", 1, 2));
+    eLog::logFatal(eLog::fmt::Format("value 1: {:d} value 2: {:d}", 1, 2));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("value 1: {:f} value 2: {:d}", 1.23456789, 1));
+    eLog::logDebug(eLog::fmt::Format("value 1: {:f} value 2: {:d}", 1.23456789, 1));
+    eLog::logInfo(eLog::fmt::Format("value 1: {:f} value 2: {:d}", 1.23456789, 1));
+    eLog::logWarning(eLog::fmt::Format("value 1: {:f} value 2: {:d}", 1.23456789, 1));
+    eLog::logError(eLog::fmt::Format("value 1: {:f} value 2: {:d}", 1.23456789, 1));
+    eLog::logFatal(eLog::fmt::Format("value 1: {:f} value 2: {:d}", 1.23456789, 1));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("value 1: {:f2} value 2: {:d}", 1.23456789, 1));
+    eLog::logDebug(eLog::fmt::Format("value 1: {:f2} value 2: {:d}", 1.23456789, 1));
+    eLog::logInfo(eLog::fmt::Format("value 1: {:f2} value 2: {:d}", 1.23456789, 1));
+    eLog::logWarning(eLog::fmt::Format("value 1: {:f2} value 2: {:d}", 1.23456789, 1));
+    eLog::logError(eLog::fmt::Format("value 1: {:f2} value 2: {:d}", 1.23456789, 1));
+    eLog::logFatal(eLog::fmt::Format("value 1: {:f2} value 2: {:d}", 1.23456789, 1));
+
+    std::cout << std::endl;
+
+    eLog::logTrace(eLog::fmt::Format("value 1: {:x}, {:x4}", 255, 255));
+    eLog::logDebug(eLog::fmt::Format("value 1: {:x}, {:x4}", 255, 255));
+    eLog::logInfo(eLog::fmt::Format("value 1: {:x}, {:x4}", 255, 255));
+    eLog::logWarning(eLog::fmt::Format("value 1: {:x}, {:x4}", 255, 255));
+    eLog::logError(eLog::fmt::Format("value 1: {:x}, {:x4}", 255, 255));
+    eLog::logFatal(eLog::fmt::Format("value 1: {:x}, {:x4}", 255, 255));
+
+    return 0;
+}
+```
+
+![formatterexample](images/formatterexample.png)
 
 ## Contributions and Issues
 
