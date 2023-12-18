@@ -175,10 +175,39 @@ namespace eLog {
             std::size_t mPosEndColor;
             bool mReplaceAllMatching = false;
 
+            /**
+             * @brief Default constructor.
+             * 
+             * This constructor is used to initialize the ReplaceString struct with default values
+            */
             ReplaceString() = default;
+
+            /**
+             * @brief This Constructor is deleted.
+             * 
+             * This constructor is deleted to prevent the compiler from generating it.
+            */
             ReplaceString(const ReplaceString&) = delete;
+
+            /**
+             * @brief This assignment operator is deleted.
+             * 
+             * This assignment operator is deleted to prevent the compiler from generating it.
+            */
             ReplaceString& operator=(const ReplaceString&) = delete;
+
+            /**
+             * @brief Move constructor.
+             * 
+             * This constructor is used to initialize the ReplaceString struct with an rvalue reference.
+            */
             ReplaceString(ReplaceString&&) noexcept = default;
+
+            /**
+             * @brief Move assignment operator.
+             * 
+             * This assignment operator is used to assign an rvalue reference to the ReplaceString struct.
+            */
             ReplaceString& operator=(ReplaceString&&) noexcept = default;
         };
 
