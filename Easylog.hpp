@@ -383,7 +383,8 @@ namespace eLog {
                 if (strToColorize.empty() && !AsciiColor::AsciiColors.contains(color))
                     return;
 
-                std::stringbuf prevColor(AsciiColor::ResetColor.data());
+                std::stringbuf prevColor;
+                prevColor.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
                 std::size_t lastColorPos = 0;
 
                 if(!mReplaceStrings.empty())
@@ -394,19 +395,12 @@ namespace eLog {
 
                 std::stringbuf replace;
                 auto c = AsciiColor::AsciiColors.at(color);
+                replace.sputn(c.data(), c.length());
+                replace.sputn(strToColorize.data(), strToColorize.length());
+                replace.sputn(prevColor.view().data(), prevColor.in_avail());
+
                 if(lastColorPos < mStr.find(strToColorize))
-                {
-                    replace.sputn(c.data(), c.length());
-                    replace.sputn(strToColorize.data(), strToColorize.length());
-                    replace.sputn(prevColor.view().data(), prevColor.in_avail());
                     replace.sputn(AsciiColor::AsciiColors.begin()->second.data(), AsciiColor::AsciiColors.begin()->second.length());
-                }
-                else
-                {
-                    replace.sputn(c.data(), c.length());
-                    replace.sputn(strToColorize.data(), strToColorize.length());
-                    replace.sputn(prevColor.view().data(), prevColor.in_avail());
-                }
 
                 prevColor.str("");
                 prevColor.sputn(c.data(), c.length());
