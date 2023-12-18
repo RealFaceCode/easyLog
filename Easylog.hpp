@@ -118,6 +118,8 @@ namespace eLog {
             {ColorEnum::BOLD_WHITE, "\033[1m\033[37m"}
         };
 
+        const std::string_view ResetColor(AsciiColors.at(ColorEnum::RESET));
+
         /**
          * @brief Checks if the current terminal supports ASCII colors.
          * @return true if ASCII colors are supported, false otherwise.
@@ -167,11 +169,46 @@ namespace eLog {
          */
         struct ReplaceString
         {
-            std::string mBaseString;
-            std::string mReplaceString;
-            std::string mPrevColor;
+            std::stringbuf mBaseString;
+            std::stringbuf mReplaceString;
+            std::stringbuf mPrevColor;
             std::size_t mPosEndColor;
             bool mReplaceAllMatching = false;
+
+            /**
+             * @brief Default constructor.
+             * 
+             * This constructor is used to initialize the ReplaceString struct with default values
+            */
+            ReplaceString() = default;
+
+            /**
+             * @brief This Constructor is deleted.
+             * 
+             * This constructor is deleted to prevent the compiler from generating it.
+            */
+            ReplaceString(const ReplaceString&) = delete;
+
+            /**
+             * @brief This assignment operator is deleted.
+             * 
+             * This assignment operator is deleted to prevent the compiler from generating it.
+            */
+            ReplaceString& operator=(const ReplaceString&) = delete;
+
+            /**
+             * @brief Move constructor.
+             * 
+             * This constructor is used to initialize the ReplaceString struct with an rvalue reference.
+            */
+            ReplaceString(ReplaceString&&) noexcept = default;
+
+            /**
+             * @brief Move assignment operator.
+             * 
+             * This assignment operator is used to assign an rvalue reference to the ReplaceString struct.
+            */
+            ReplaceString& operator=(ReplaceString&&) noexcept = default;
         };
 
         /**
@@ -346,33 +383,42 @@ namespace eLog {
                 if (strToColorize.empty() && !AsciiColor::AsciiColors.contains(color))
                     return;
 
-                std::string prevColor = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET);
+                std::stringbuf prevColor(AsciiColor::ResetColor.data());
                 std::size_t lastColorPos = 0;
 
                 if(!mReplaceStrings.empty())
                 {
-                    prevColor = mReplaceStrings.back().mPrevColor;
+                    prevColor = std::move(mReplaceStrings.back().mPrevColor);
                     lastColorPos = mReplaceStrings.back().mPosEndColor;
                 }
 
-                std::string replace;
+                std::stringbuf replace;
+                auto c = AsciiColor::AsciiColors.at(color);
                 if(lastColorPos < mStr.find(strToColorize))
-                    replace = std::string(AsciiColor::AsciiColors.at(color)).append(strToColorize).append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
-                else
-                    replace = std::string(AsciiColor::AsciiColors.at(color)).append(strToColorize).append(prevColor);
-
-                prevColor = AsciiColor::AsciiColors.at(color);
-
-                StringHelper::ReplaceString replaceString
                 {
-                    .mBaseString = std::string(strToColorize),
-                    .mReplaceString = replace,
-                    .mPrevColor = prevColor,
-                    .mPosEndColor = mStr.find(strToColorize) + strToColorize.length(),
-                    .mReplaceAllMatching = replaceAllMatching
-                };
+                    replace.sputn(c.data(), c.length());
+                    replace.sputn(strToColorize.data(), strToColorize.length());
+                    replace.sputn(prevColor.view().data(), prevColor.in_avail());
+                    replace.sputn(AsciiColor::AsciiColors.begin()->second.data(), AsciiColor::AsciiColors.begin()->second.length());
+                }
+                else
+                {
+                    replace.sputn(c.data(), c.length());
+                    replace.sputn(strToColorize.data(), strToColorize.length());
+                    replace.sputn(prevColor.view().data(), prevColor.in_avail());
+                }
 
-                mReplaceStrings.push_back(replaceString);
+                prevColor.str("");
+                prevColor.sputn(c.data(), c.length());
+
+                StringHelper::ReplaceString replaceString;
+                replaceString.mBaseString.str(strToColorize.data());
+                replaceString.mReplaceString = std::move(replace);
+                replaceString.mPrevColor = std::move(prevColor);
+                replaceString.mPosEndColor = mStr.find(strToColorize) + strToColorize.length();
+                replaceString.mReplaceAllMatching = replaceAllMatching;
+
+                mReplaceStrings.push_back(std::move(replaceString));
             }
 
             /**
@@ -384,7 +430,7 @@ namespace eLog {
             {
                 for(const auto& replace : mReplaceStrings)
                 {
-                    StringHelper::Replace(mStr, replace.mBaseString, replace.mReplaceString, replace.mReplaceAllMatching);
+                    StringHelper::Replace(mStr, replace.mBaseString.view(), replace.mReplaceString.view(), replace.mReplaceAllMatching);
                 }
             }
 
@@ -599,10 +645,10 @@ namespace eLog {
             */
             struct Data
             {
-                static std::string mLabelColor;
+                static std::string_view mLabelColor;
             };
 
-            std::string Data::mLabelColor = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE);
+            std::string_view Data::mLabelColor(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE));
         } // namespace Impl
 
         /**
@@ -613,9 +659,15 @@ namespace eLog {
          * @param label The log label.
          * @return The string representation of the log label.
         */
-        std::string getLabelStringLog(const Impl::Label& label)
+        std::stringbuf getLabelStringLog(Impl::Label label)
         {
-            return std::string(Impl::Data::mLabelColor).append("[").append(label).append("]").append(AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
+            std::stringbuf labelString;
+            labelString.sputn(Impl::Data::mLabelColor.data(), Impl::Data::mLabelColor.length());
+            labelString.sputn("[", 1);
+            labelString.sputn(label.data(), label.length());
+            labelString.sputn("]", 1);
+            labelString.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+            return labelString;
         }
 
         /**
@@ -626,9 +678,14 @@ namespace eLog {
          * @param label The log label.
          * @return The string representation of the log label.
         */
-        std::string getLabelStringFileLog(const Impl::Label& label)
+        std::stringbuf getLabelStringFileLog(Impl::Label label)
         {
-            return std::string("[").append(label).append("]");
+            std::stringbuf labelString;
+            labelString.sputn("[", 1);
+            labelString.sputn(label.data(), label.length());
+            labelString.sputn("]", 1);
+
+            return labelString;
         }
     } // namespace LogLabel
 
@@ -643,7 +700,7 @@ namespace eLog {
     */
     namespace LogLevel
     {
-        using LogLevel = std::string;
+        using LogLevel = std::string_view;
 
         /**
          * @namespace Impl
@@ -686,24 +743,36 @@ namespace eLog {
          * @param colorize A flag indicating whether to colorize the log level.
          * @return The string representation of the log level.
         */
-        std::string getLogLevelString(const LogLevel& logLevel, bool colorize = true)
+        std::stringbuf getLogLevelString(LogLevel logLevel, bool colorize = true)
         {
             auto it = Impl::Data::LogLevels.find(logLevel);
+            std::stringbuf logLevelString;
             if(colorize)
             {
-                using enum eLog::AsciiColor::ColorEnum;
                 if(it != Impl::Data::LogLevels.end())
-                    return std::string(AsciiColor::AsciiColors.at(it->second)).append(logLevel).append(AsciiColor::AsciiColors.at(RESET));
+                {
+                    auto c = AsciiColor::AsciiColors.at(it->second);
+                    logLevelString.sputn(c.data(),c.length());
+                    logLevelString.sputn(logLevel.data(), logLevel.length());
+                    logLevelString.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+                }
                 else
-                    return std::string(AsciiColor::AsciiColors.at(BOLD_WHITE)).append("UNKNOWN").append(AsciiColor::AsciiColors.at(RESET));
+                {
+                    auto c = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE);
+                    logLevelString.sputn(c.data(), c.length());
+                    logLevelString.sputn("UNKNOWN", 7);
+                    logLevelString.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+                }
             }
             else
             {
                 if(it != Impl::Data::LogLevels.end())
-                    return logLevel;
+                    logLevelString.str(logLevel.data());
                 else
-                    return "UNKNOWN";
+                    logLevelString.str("UNKNOWN");
             }
+
+            return logLevelString;
         }
     } // namespace LogLevel
 
@@ -738,8 +807,6 @@ namespace eLog {
             std::string mTime;
         };
 
-        static const std::string LogInfoFmt("{}[{} | {} | {} | {} | {}]{}");
-
         /**
          * @brief Gets the log information for a log message.
          * 
@@ -768,17 +835,24 @@ namespace eLog {
          * @param logInfo The log information.
          * @return The formatted log information.
         */
-        std::string getFmtLogInfo(const LogInfo& logInfo)
+        std::stringbuf getFmtLogInfo(const LogInfo& logInfo)
         {
-            std::string fmtLogInfo = LogInfoFmt;
+            auto path = logInfo.mFile.filename().string();
 
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mColor);
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mDate);
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mTime);
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mFile.filename().string());
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mFunction);
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, logInfo.mLine);
-            fmtLogInfo.replace(fmtLogInfo.find("{}"), 2, AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::RESET));
+            std::stringbuf fmtLogInfo;
+            fmtLogInfo.sputn(logInfo.mColor.data(), logInfo.mColor.length());
+            fmtLogInfo.sputn("[", 1);
+            fmtLogInfo.sputn(logInfo.mDate.data(), logInfo.mDate.length());
+            fmtLogInfo.sputn(" | ", 3);
+            fmtLogInfo.sputn(logInfo.mTime.data(), logInfo.mTime.length());
+            fmtLogInfo.sputn(" | ", 3);
+            fmtLogInfo.sputn(path.data(), path.length());
+            fmtLogInfo.sputn(" | ", 3);
+            fmtLogInfo.sputn(logInfo.mFunction.data(), logInfo.mFunction.length());
+            fmtLogInfo.sputn(" | ", 3);
+            fmtLogInfo.sputn(logInfo.mLine.data(), logInfo.mLine.length());
+            fmtLogInfo.sputn("]", 1);
+            fmtLogInfo.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
 
             return fmtLogInfo;
         }
@@ -817,20 +891,33 @@ namespace eLog {
          * @param label The log label.
          * @param src The source location of the log message.
         */
-        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
+        void log(LogLevel::LogLevel logLevel, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
-            std::string logLevelString = LogLevel::getLogLevelString(logLevel);
-            std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
-            std::string labelString;
+            auto logLevelString = LogLevel::getLogLevelString(logLevel);
+            auto fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
+            auto vLogLevelString = logLevelString.view();
+            auto vFmtLogInfo = fmtLogInfo.view();
+
+            std::stringbuf out;
+            out.sputn(vLogLevelString.data(), vLogLevelString.length());
+            out.sputn("\t: ", 3);
+
             if(label != "default")
             {
-                labelString = LogLabel::getLabelStringLog(label);
-                std::cout << logLevelString << "\t: " << labelString << " " << fmtLogInfo << " : " << msg << std::endl;
+                auto labelString = LogLabel::getLabelStringLog(label);
+                auto vLabelString = labelString.view();
+                out.sputn(vLabelString.data(), vLabelString.length());
+                out.sputc(' ');
             }
-            else
-                std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << msg << std::endl;
+
+            out.sputn(vFmtLogInfo.data(), vFmtLogInfo.length());
+            out.sputn(" : ", 3);
+            out.sputn(msg.data(), msg.length());
+            out.sputc('\n');
+
+            std::cout << out.str();;
 
             if(State::Impl::Data::DirectFlush)
                 std::cout.flush();
@@ -850,16 +937,30 @@ namespace eLog {
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
-            std::string logLevelString = LogLevel::getLogLevelString(logLevel);
-            std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
-            std::string labelString = "";
+            auto logLevelString = LogLevel::getLogLevelString(logLevel);
+            auto fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
+            auto vLogLevelString = logLevelString.view();
+            auto vFmtLogInfo = fmtLogInfo.view();
+            auto& msg = colorizedString.getColorizedString();
+
+            std::stringbuf out;
+            out.sputn(vLogLevelString.data(), vLogLevelString.length());
+            out.sputn("\t: ", 3);
+
             if(label != "default")
             {
-                labelString = LogLabel::getLabelStringLog(label);
-                std::cout << logLevelString << "\t: " << labelString << " " << fmtLogInfo << " : " << colorizedString << std::endl;
+                auto labelString = LogLabel::getLabelStringLog(label);
+                auto vLabelString = labelString.view();
+                out.sputn(vLabelString.data(), vLabelString.length());
+                out.sputc(' ');
             }
-            else
-                std::cout << logLevelString << "\t: " << fmtLogInfo << " : " << colorizedString << std::endl;
+
+            out.sputn(vFmtLogInfo.data(), vFmtLogInfo.length());
+            out.sputn(" : ", 3);
+            out.sputn(msg.data(), msg.length());
+            out.sputc('\n');
+
+            std::cout << out.str();
 
             if(State::Impl::Data::DirectFlush)
                 std::cout.flush();
@@ -896,8 +997,6 @@ namespace eLog {
             std::string mTime;
         };
 
-        static const std::string FileLogInfoFmt("[{} | {} | {} | {} | {}]");
-
         /**
          * @brief Gets the file log information for a log message.
          * 
@@ -925,15 +1024,22 @@ namespace eLog {
          * @param fileLogInfo The file log information.
          * @return The formatted file log information.
         */
-        std::string getFmtFileLogInfo(const FileLogInfo& fileLogInfo)
+        std::stringbuf getFmtFileLogInfo(const FileLogInfo& fileLogInfo)
         {
-            std::string fmtFileLogInfo = FileLogInfoFmt;
+            auto path = fileLogInfo.mFile.filename().string();
 
-            fmtFileLogInfo.replace(fmtFileLogInfo.find("{}"), 2, fileLogInfo.mDate);
-            fmtFileLogInfo.replace(fmtFileLogInfo.find("{}"), 2, fileLogInfo.mTime);
-            fmtFileLogInfo.replace(fmtFileLogInfo.find("{}"), 2, fileLogInfo.mFile.filename().string());
-            fmtFileLogInfo.replace(fmtFileLogInfo.find("{}"), 2, fileLogInfo.mFunction);
-            fmtFileLogInfo.replace(fmtFileLogInfo.find("{}"), 2, fileLogInfo.mLine);
+            std::stringbuf fmtFileLogInfo;
+            fmtFileLogInfo.sputn("[", 1);
+            fmtFileLogInfo.sputn(fileLogInfo.mDate.data(), fileLogInfo.mDate.length());
+            fmtFileLogInfo.sputn(" | ", 3);
+            fmtFileLogInfo.sputn(fileLogInfo.mTime.data(), fileLogInfo.mTime.length());
+            fmtFileLogInfo.sputn(" | ", 3);
+            fmtFileLogInfo.sputn(path.data(), path.length());
+            fmtFileLogInfo.sputn(" | ", 3);
+            fmtFileLogInfo.sputn(fileLogInfo.mFunction.data(), fileLogInfo.mFunction.length());
+            fmtFileLogInfo.sputn(" | ", 3);
+            fmtFileLogInfo.sputn(fileLogInfo.mLine.data(), fileLogInfo.mLine.length());
+            fmtFileLogInfo.sputn("]", 1);
 
             return fmtFileLogInfo;
         }
@@ -1046,15 +1152,29 @@ namespace eLog {
          * @param label The log label.
          * @param src The source location of the log message.
         */
-        void log(const LogLevel::LogLevel& logLevel, std::string_view msg, LogLabel::Impl::Label label, SourceLoc src)
+        void log(LogLevel::LogLevel logLevel, std::string_view msg, LogLabel::Impl::Label label, SourceLoc src)
         {
-            std::string fmtFileLogInfo = FileLogInfo::getFmtFileLogInfo(FileLogInfo::getFileLogInfo(src));
-            std::string labelString;
-            if(label != "default")
-                labelString = LogLabel::getLabelStringFileLog(label);
+            auto fmtFileLogInfo = FileLogInfo::getFmtFileLogInfo(FileLogInfo::getFileLogInfo(src));
+            auto level = LogLevel::getLogLevelString(logLevel, false);
+            auto vFmtFileLogInfo = fmtFileLogInfo.view();
+            auto vLevel = level.view();
 
-            std::string level = LogLevel::getLogLevelString(logLevel, false);
+            std::stringbuf out;
+            out.sputn(vLevel.data(), vLevel.length());
+            out.sputn("\t: ", 3);
+
+            if(label != "default")
+            {
+                auto l = LogLabel::getLabelStringFileLog(label);
+                out.sputn(l.view().data(), l.in_avail());
+                out.sputn(" ", 1);
+            }
             
+            out.sputn(vFmtFileLogInfo.data(), vFmtFileLogInfo.length());
+            out.sputn(" : ", 3);
+            out.sputn(msg.data(), msg.length());
+            out.sputc('\n');
+
             if(State::Impl::Data::UseDefaultFileLog)
             {
                 std::scoped_lock lock(Impl::Data::DefaultFileLogger.mtx);
@@ -1062,10 +1182,7 @@ namespace eLog {
                 if(!Impl::Data::DefaultFileLogger.mStream.is_open())
                     Impl::Data::DefaultFileLogger.mStream.open(Impl::Data::DefaultFileLogger.mPath, Impl::Data::DefaultFileLogger.mOpenMode);
                 
-                if(labelString.empty())
-                    Impl::Data::DefaultFileLogger.mStream << level << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
-                else
-                    Impl::Data::DefaultFileLogger.mStream << level << "\t: " << labelString << " " << fmtFileLogInfo << " : " << msg << std::endl;
+                Impl::Data::DefaultFileLogger.mStream << out.view();
                     
                 if(State::Impl::Data::DirectFlush)
                     Impl::Data::DefaultFileLogger.mStream.flush();
@@ -1078,10 +1195,7 @@ namespace eLog {
                 if(!fileLogger.mStream.is_open())
                     fileLogger.mStream.open(fileLogger.mPath, fileLogger.mOpenMode);
 
-                if(labelString.empty())
-                    fileLogger.mStream << level << "\t: " << fmtFileLogInfo << " : " << msg << std::endl;
-                else
-                    fileLogger.mStream << level << "\t: " << labelString << " " << fmtFileLogInfo << " : " << msg << std::endl;
+                    fileLogger.mStream << out.view();
 
                 if(State::Impl::Data::DirectFlush)
                     fileLogger.mStream.flush();
@@ -1150,30 +1264,45 @@ namespace eLog {
          * @param label The log label.
          * @param src The source location of the log message.
         */
-        void log(const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
+        void log(LogLevel::LogLevel level, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
-            std::string logLevelString = LogLevel::getLogLevelString(level);
-            std::string fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
-            std::string labelString;
-            if(label != "default")
-                labelString = LogLabel::getLabelStringLog(label);
+            auto logLevelString = LogLevel::getLogLevelString(level);
+            auto fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
+            auto vLogLevelString = logLevelString.view();
+            auto vFmtLogInfo = fmtLogInfo.view();
 
-            if(labelString.empty())
+            std::stringbuf out;
+            out.sputn(vLogLevelString.data(), vLogLevelString.length());
+            out.sputn("\t: ", 3);
+
+            if(label == "default")
             {
+                out.sputn(vFmtLogInfo.data(), vFmtLogInfo.length());
+                out.sputn(" : ", 3);
+                out.sputn(msg.data(), msg.length());
+
                 if(State::Impl::Data::BufferLog)
-                    Impl::Data::mLogBuffer.emplace_back(logLevelString).append("\t: ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+                    Impl::Data::mLogBuffer.emplace_back(out.view());
                 if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(logLevelString).append("\t: ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
             }
             else
             {
+                auto labelString = LogLabel::getLabelStringLog(label);
+                auto vLabelString = labelString.view();
+                out.sputn(vLabelString.data(), vLabelString.length());
+                out.sputn(" ", 1);
+                out.sputn(vFmtLogInfo.data(), vFmtLogInfo.length());
+                out.sputn(" : ", 3);
+                out.sputn(msg.data(), msg.length());
+
                 if(State::Impl::Data::BufferLog)
-                    Impl::Data::mLogBuffer.emplace_back(logLevelString).append("\t: ").append(labelString).append(" ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
+                    Impl::Data::mLogBuffer.emplace_back(out.view());
                 if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(logLevelString).append("\t: ").append(labelString).append(" ").append(fmtLogInfo).append(" : ").append(msg).append("\n");
-            }    
+                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+            }
         }
 
         /**
@@ -1186,30 +1315,40 @@ namespace eLog {
          * @param label The log label.
          * @param src The source location of the log message.
         */
-        void fileLog(const LogLevel::LogLevel& logLevel, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
+        void fileLog(LogLevel::LogLevel level, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
         {
             std::scoped_lock lock(Impl::Data::mtx);
 
-            std::string fmtFileLogInfo = FileLogInfo::getFmtFileLogInfo(FileLogInfo::getFileLogInfo(src));
-            std::string labelString;
-            if(label != "default")
-                labelString = LogLabel::getLabelStringFileLog(label);
+            std::stringbuf logLevelString = LogLevel::getLogLevelString(level, false);
+            std::stringbuf fmtLogInfo = LogInfo::getFmtLogInfo(LogInfo::getLogInfo(src));
 
-            std::string level = LogLevel::getLogLevelString(logLevel, false);
+            std::stringbuf out(logLevelString.view().data());
+            out.sputn("\t: ", 3);
 
-            if(labelString.empty())
+            if(label == "default")
             {
-                if(State::Impl::Data::BufferFileLog)
-                    Impl::Data::mFileLogBuffer.emplace_back(level).append("\t: ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
-                if(State::Impl::Data::BufferFileLogLabel)
-                    Impl::Data::mFileLogBufferLabel[std::string(label)].emplace_back(level).append("\t: ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
+                out.sputn(fmtLogInfo.view().data(), fmtLogInfo.view().length());
+                out.sputn(" : ", 3);
+                out.sputn(msg.data(), msg.length());
+
+                if(State::Impl::Data::BufferLog)
+                    Impl::Data::mLogBuffer.emplace_back(out.view());
+                if(State::Impl::Data::BufferLogLabel)
+                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
             }
             else
             {
-                if(State::Impl::Data::BufferFileLog)
-                    Impl::Data::mFileLogBuffer.emplace_back(level).append("\t: ").append(labelString).append(" ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
-                if(State::Impl::Data::BufferFileLogLabel)
-                    Impl::Data::mFileLogBufferLabel[std::string(label)].emplace_back(level).append("\t: ").append(labelString).append(" ").append(fmtFileLogInfo).append(" : ").append(msg).append("\n");
+                auto labelString = LogLabel::getLabelStringLog(label);
+                out.sputn(labelString.view().data(), labelString.in_avail());
+                out.sputn(" ", 1);
+                out.sputn(fmtLogInfo.view().data(), fmtLogInfo.view().length());
+                out.sputn(" : ", 3);
+                out.sputn(msg.data(), msg.length());
+
+                if(State::Impl::Data::BufferLog)
+                    Impl::Data::mLogBuffer.emplace_back(out.view());
+                if(State::Impl::Data::BufferLogLabel)
+                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
             }
         }
     } // namespace BufferLogImpL
