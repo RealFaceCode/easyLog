@@ -1481,6 +1481,41 @@ namespace eLog {
             auto [it, success] = LogLevel::Impl::Data::LogLevels.try_emplace(std::string(logLevel), color);
             return success;
         }
+
+        /**
+         * @brief Close the stream of a file logger.
+         * 
+         * This function closes the stream of a file logger. Or all file loggers if no stream is specified.
+         * 
+         * @param stream The stream to close.
+        */
+        void CloseStream(std::string_view stream = "")
+        {
+            if(stream != "")
+            {
+                std::scoped_lock lock(State::Impl::Data::mtx);
+                if(stream == "default")
+                {
+                    if(FileLogImpl::Impl::Data::DefaultFileLogger.mStream.is_open())
+                        FileLogImpl::Impl::Data::DefaultFileLogger.mStream.close();
+                }
+                else
+                {
+                    auto it = FileLogImpl::Impl::Data::FileLoggers.find(std::string(stream));
+                    if(it != FileLogImpl::Impl::Data::FileLoggers.end() && it->second.mStream.is_open())
+                        it->second.mStream.close();
+                }
+            }
+            else
+            {
+                std::scoped_lock lock(State::Impl::Data::mtx);
+                if(FileLogImpl::Impl::Data::DefaultFileLogger.mStream.is_open())
+                    FileLogImpl::Impl::Data::DefaultFileLogger.mStream.close();
+                for(auto& [name, fileLogger] : FileLogImpl::Impl::Data::FileLoggers)
+                    if(fileLogger.mStream.is_open())
+                        fileLogger.mStream.close();
+            }
+        }
     } // namespace State
 
     /**
