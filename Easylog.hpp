@@ -482,7 +482,15 @@ namespace eLog {
             auto currentTime = std::chrono::system_clock::now();
             auto localTime = std::chrono::system_clock::to_time_t(currentTime);
             std::ostringstream oss;
-            oss << std::put_time(std::localtime(&localTime), format.data());
+            
+            std::tm result;
+            #ifdef _WIN32
+                localtime_s(&result, &localTime);
+            #else
+                localtime_r(&localTime, &result);
+            #endif
+            
+            oss << std::put_time(&result, format.data());
             return oss.str();
         }
     } // namespace StringHelper
@@ -903,29 +911,6 @@ namespace eLog {
             if(State::Impl::Data::DirectFlush)
                 std::cout.flush();
         }
-
-        /**
-         * @brief Logs a colorized message to the console.
-         * 
-         * This function logs a colorized message to the console.
-         * 
-         * @param logLevel The log level.
-         * @param colorizedString The colorized message to log.
-         * @param label The log label.
-         * @param src The source location of the log message.
-        */
-        void log(const LogLevel::LogLevel& logLevel, const StringHelper::ColorizedString& colorizedString, LogLabel::Impl::Label label, const SourceLoc& src)
-        {
-            std::scoped_lock lock(Impl::Data::mtx);
-
-            std::stringbuf out;
-            fillLogBuffer(out, logLevel, colorizedString.getColorizedString(), label, src);
-
-            std::cout << out.str();
-
-            if(State::Impl::Data::DirectFlush)
-                std::cout.flush();
-        }
     } // namespace LogImpl
 
     /**
@@ -940,7 +925,6 @@ namespace eLog {
     */
     namespace FileLogInfo
     {
-
         /**
          * @struct FileLogInfo
          * @brief Struct for storing file log information.
