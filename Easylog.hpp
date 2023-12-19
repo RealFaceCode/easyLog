@@ -1812,6 +1812,113 @@ namespace eLog {
     }
 
     /**
+     * @brief Logs a custom log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param logLevel The log level.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logCustom(bool condition,const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        if(condition)
+            logCustom(level, msg, label, src);
+    }
+
+    /**
+     * @brief Logs a trace log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logTrace(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "TRACE", msg, label, src);
+    }
+
+    /**
+     * @brief Logs a debug log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logDebug(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "DEBUG", msg, label, src);
+    }
+
+    /**
+     * @brief Logs an info log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logInfo(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "INFO", msg, label, src);
+    }
+
+    /**
+     * @brief Logs a warning log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logWarning(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "WARNING", msg, label, src);
+    }
+
+    /**
+     * @brief Logs an error log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logError(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "ERROR", msg, label, src);
+    }
+
+    /**
+     * @brief Logs a fatal log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logFatal(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "FATAL", msg, label, src);
+    }
+
+    /**
      * @brief Logs a custom log message with colorized strings.
      * 
      * This function logs a custom log message with colorized strings.
@@ -1918,5 +2025,119 @@ namespace eLog {
     void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {   
         logCustom("FATAL", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a custom log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param logLevel The log level.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logCustom(bool condition, const LogLevel::LogLevel& level, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        if(condition)
+            logCustom(level, msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a trace log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logTrace(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "TRACE", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a debug log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logDebug(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "DEBUG", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs an info log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logInfo(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logCustom(condition, "INFO", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a warning log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logWarning(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {   
+        logCustom(condition, "WARNING", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs an error log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logError(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {   
+        logCustom(condition, "ERROR", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a fatal log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+     */
+    void logFatal(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {   
+        logCustom(condition, "FATAL", msg, colorizeStrings, label, src);
     }
 } // namespace eLog
