@@ -482,7 +482,15 @@ namespace eLog {
             auto currentTime = std::chrono::system_clock::now();
             auto localTime = std::chrono::system_clock::to_time_t(currentTime);
             std::ostringstream oss;
-            oss << std::put_time(std::localtime(&localTime), format.data());
+            
+            std::tm result;
+            #ifdef _WIN32
+                localtime_s(&result, &localTime);
+            #else
+                localtime_r(&localTime, &result);
+            #endif
+            
+            oss << std::put_time(&result, format.data());
             return oss.str();
         }
     } // namespace StringHelper
