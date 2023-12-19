@@ -470,38 +470,20 @@ namespace eLog {
         };
 
         /**
-         * @brief Gets the current date as a string.
+         * @brief Gets the current date or time as a string.
          * 
-         * This function gets the current date as a string.
+         * This function gets the current date or time as a string.
          * 
+         * @param format The format of the date string.
          * @return The current date as a string.
         */
-        std::string getCurrentDateAsString()
-        {
-            auto currentTime = std::chrono::system_clock::now();
-            auto localTime = std::chrono::system_clock::to_time_t(currentTime);
-            const std::tm* timeInfo = std::localtime(&localTime);
-            std::ostringstream oss;
-            oss << std::put_time(timeInfo, "%b %d %Y");
-            return oss.str();
-        }
-
-
-        /**
-         * @brief Gets the current time as a string.
-         * 
-         * This function gets the current time as a string.
-         * 
-         * @return The current time as a string.
-        */
-        std::string getCurrentTimeAsString()
+        std::string getCurrentTD(std::string_view format) // "%b %d %Y" "%H:%M:%S"
         {
             auto currentTime = std::chrono::system_clock::now();
             auto localTime = std::chrono::system_clock::to_time_t(currentTime);
             std::ostringstream oss;
-            oss << std::put_time(std::localtime(&localTime), "%H:%M:%S");
+            oss << std::put_time(std::localtime(&localTime), format.data());
             return oss.str();
-            
         }
     } // namespace StringHelper
 
@@ -792,8 +774,8 @@ namespace eLog {
                 .mFile = src.file_name(),
                 .mFunction = src.function_name(),
                 .mLine = std::to_string(src.line()),
-                .mDate = StringHelper::getCurrentDateAsString(),
-                .mTime = StringHelper::getCurrentTimeAsString(),
+                .mDate = StringHelper::getCurrentTD("%b %d %Y"),
+                .mTime = StringHelper::getCurrentTD("%H:%M:%S"),
             };
         }
 
@@ -990,8 +972,8 @@ namespace eLog {
                 .mFile = src.file_name(),
                 .mFunction = src.function_name(),
                 .mLine = std::to_string(src.line()),
-                .mDate = StringHelper::getCurrentDateAsString(),
-                .mTime = StringHelper::getCurrentTimeAsString(),
+                .mDate = StringHelper::getCurrentTD("%b %d %Y"),
+                .mTime = StringHelper::getCurrentTD("%H:%M:%S"),
             };
         }
     } // namespace FileLogInfo
@@ -1597,8 +1579,11 @@ namespace eLog {
              * @param t The arguments.
             */
             template<std::size_t I = 0, typename... Tp>
-            inline typename std::enable_if<I == sizeof...(Tp), void>::type
-            ToString(std::vector<std::string>& vals, const std::tuple<Tp...>&){}
+            inline typename std::enable_if_t<I == sizeof...(Tp), void>
+            ToString([[maybe_unused]] const std::vector<std::string>&, const std::tuple<Tp...>&)
+            {
+                // This method is intentionally left empty.
+            }
 
             /**
              * @brief Converts the arguments to a vector of strings.
@@ -1609,7 +1594,7 @@ namespace eLog {
              * @param t The arguments.
             */
             template<std::size_t I = 0, typename... Tp>
-            inline typename std::enable_if<I < sizeof...(Tp), void>::type
+            inline typename std::enable_if_t<I < sizeof...(Tp), void>
             ToString(std::vector<std::string>& vals, const std::tuple<Tp...>& t)
             {
                 auto value = std::get<I>(t);
