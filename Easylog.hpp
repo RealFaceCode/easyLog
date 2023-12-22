@@ -43,6 +43,11 @@
 #include <assert.h>
 #include <sstream>
 #include <algorithm>
+#include <memory>
+#include <queue>
+#include <condition_variable>
+#include <chrono>
+#include <thread>
 
 #ifdef __clang__
 #include <experimental/source_location>
@@ -51,8 +56,6 @@
 #include <source_location>
     using SourceLoc = std::source_location;
 #endif
-
-
 
 /**
  * @namespace eLog
@@ -63,7 +66,62 @@
  * It includes sub-namespaces for different aspects of logging and string manipulation.
  * The namespace also defines enums and structs used for configuration and data storage.
  */
-namespace eLog {
+namespace eLog
+{
+
+    /**
+     * @namespace LogUsings
+     * @brief Namespace containing using declarationss.
+     *
+     * The LogUsings namespace contains using declarations.
+     * It is used to simplify the syntax for declaring stdlib objects.
+     * 
+     * @note This namespace is defined within the Easylog.hpp file.
+     * 
+     * @example
+     * LogUsings::Ref<std::stringbuf> ptr = LogUsings::MakeRef<std::stringbuf>();
+     * LogUsings::Scope<std::stringbuf> ptr = LogUsings::MakeScope<std::stringbuf>();
+     */
+    namespace LogUsings
+    {
+        template<typename T>
+        using Ref = std::shared_ptr<T>;
+        template<typename T>
+        using Scope = std::unique_ptr<T>;
+
+        /**
+         * @brief Creates a Ref to an object of type T.
+         * 
+         * This function creates a Ref to an object of type T.
+         * 
+         * @tparam T The type of the object.
+         * @tparam Args The types of the arguments to construct the object.
+         * @param args The arguments to construct the object.
+         * @return A Ref to the object.
+        */
+        template<typename T, typename... Args>
+        Ref<T> MakeRef(Args&& ... args)
+        {
+            return std::make_shared<T>(std::forward<Args>(args)...);
+        }
+
+        /**
+         * @brief Creates a Scope to an object of type T.
+         * 
+         * This function creates a Scope to an object of type T.
+         * 
+         * @tparam T The type of the object.
+         * @tparam Args The types of the arguments to construct the object.
+         * @param args The arguments to construct the object.
+         * @return A Scope to the object.
+        */
+        template<typename T, typename... Args>
+        Scope<T> MakeScope(Args&& ... args)
+        {
+            return std::make_unique<T>(std::forward<Args>(args)...);
+        }
+    } // namespace LogUsings
+
     /**
      * @namespace AsciiColor
      * @brief Namespace containing utilities for working with ASCII colors.
@@ -97,6 +155,11 @@ namespace eLog {
 
         /**
          * @brief Map of ASCII colors with their corresponding escape sequences.
+         * 
+         * This map contains the ASCII colors with their corresponding escape sequences.
+         * It is used to colorize strings using ASCII colors.
+         * 
+         * @note This map is defined within the Easylog.hpp file.
          */
         const std::unordered_map<ColorEnum, std::string> AsciiColors = {
             {ColorEnum::RESET, "\033[0m"},
@@ -122,6 +185,9 @@ namespace eLog {
 
         /**
          * @brief Checks if the current terminal supports ASCII colors.
+         * 
+         * This function checks if the current terminal supports ASCII colors.
+         * 
          * @return true if ASCII colors are supported, false otherwise.
          */
         static bool CheckIfColorIsSupported()
@@ -139,6 +205,8 @@ namespace eLog {
      * The StringHelper namespace contains functions and classes for performing operations on strings,
      * such as finding standalone matches, replacing substrings, colorizing strings, and getting the current date and time as strings.
      * It also includes helper functions for checking if a character is a punctuation mark.
+     * 
+     * @note This namespace is defined within the Easylog.hpp file.
      */
     namespace StringHelper
     {
@@ -161,11 +229,23 @@ namespace eLog {
             }
         };
 
+        struct StringbufHash
+        {
+            using is_transparent = void;
+            std::size_t operator()(std::stringbuf& sv) const
+            {
+                std::hash<std::string_view> hasher;
+                return hasher(sv.view());
+            }
+        };
+
         /**
          * @brief This class represents a log configuration for the Easylog library.
          * 
          * It stores the base string, replace string, previous color, position of the end color,
          * and a flag indicating whether to replace all matching strings.
+         * 
+         * @note This struct is defined within the Easylog.hpp file.
          */
         struct ReplaceString
         {
@@ -440,6 +520,11 @@ namespace eLog {
                 return mStr;
             }
 
+            std::string_view view() const
+            {
+                return mStr;
+            }
+
             /**
              * @brief Prints the colorized string.
              * 
@@ -495,6 +580,70 @@ namespace eLog {
         }
     } // namespace StringHelper
 
+     /**
+     * @namespace Colorize
+     * @brief Namespace containing functions for colorizing strings.
+     * 
+     * The Colorize namespace contains functions for colorizing strings.
+     * It includes functions for colorizing strings.
+     * 
+     * @note This namespace is defined within the Easylog.hpp file.
+    */
+    namespace Colorize
+    {
+        /**
+         * @struct Colorize
+         * @brief Struct for storing the information for colorizing strings.
+         * 
+         * This struct stores the information for colorizing strings.
+         * It includes the string to colorize, the color to use, and a flag indicating whether to replace all matching strings.
+         * 
+         * @note This struct is defined within the Easylog.hpp file.
+        */
+        struct Colorize
+        {
+            std::string str;
+            AsciiColor::ColorEnum color;
+            bool replaceAllMatching = false;
+        };
+
+        /**
+         * @brief Creates the colorize information to colorize a string.
+         * 
+         * This function creates the colorize information to colorize a string.
+         * 
+         * @param str The string to colorize.
+         * @param color The color to use.
+         * @param replaceAllMatching A flag indicating whether to replace all matching strings.
+         * @return The colorize information.
+        */
+        Colorize colorize(std::string_view str, AsciiColor::ColorEnum color, bool replaceAllMatching = false)
+        {
+            return Colorize { 
+                .str = std::string(str),
+                .color = color,
+                .replaceAllMatching = replaceAllMatching
+            };
+        }
+
+        /**
+         * @brief Creates the colorized string based on the colorize information.
+         * 
+         * This function creates the colorized string based on the colorize information.
+         * 
+         * @param str The colorized string.
+         * @param colorizedStrings The colorize information.
+        */
+        void createColorizedString(StringHelper::ColorizedString& str, const std::vector<Colorize>& colorizedStrings)
+        {
+            for(const auto& colorizedString : colorizedStrings)
+            {
+                str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
+            }
+            str.colorize();
+        }
+    } // namespace Colorize
+
     /**
      * @namespace State
      * @brief Namespace containing enums and structs for storing the state of the Easylog library.
@@ -543,6 +692,8 @@ namespace eLog {
                 static bool BufferLogLabel;
                 static bool BufferFileLog;
                 static bool BufferFileLogLabel;
+                static bool ThreadedLog;
+                static std::size_t BufferSize;
             };
 
             std::mutex Data::mtx;
@@ -557,6 +708,8 @@ namespace eLog {
             bool Data::BufferLogLabel = false;
             bool Data::BufferFileLog = false;
             bool Data::BufferFileLogLabel = false;
+            bool Data::ThreadedLog = false;
+            std::size_t Data::BufferSize = 100;
 
             /**
              * @brief Checks if the library is in the terminal log state.
@@ -588,7 +741,8 @@ namespace eLog {
             BUFFER_LOG,
             BUFFER_LOG_LABEL,
             BUFFER_FILE_LOG,
-            BUFFER_FILE_LOG_LABEL
+            BUFFER_FILE_LOG_LABEL,
+            THREADED_LOG
         };
     } // namespace State
 
@@ -729,9 +883,9 @@ namespace eLog {
             else
             {
                 if(it != Impl::Data::LogLevels.end())
-                    logLevelString.str(logLevel.data());
+                    logLevelString.sputn(logLevel.data(), logLevel.length());
                 else
-                    logLevelString.str("UNKNOWN");
+                    logLevelString.sputn("UNKNOWN", 8);
             }
         }
     } // namespace LogLevel
@@ -1073,6 +1227,7 @@ namespace eLog {
         {
             std::stringbuf out;
             LogImpl::fillLogBuffer(out, logLevel, msg, label, src, true);
+            auto vOut = out.view();
 
             if(State::Impl::Data::UseDefaultFileLog)
             {
@@ -1081,7 +1236,7 @@ namespace eLog {
                 if(!Impl::Data::DefaultFileLogger.mStream.is_open())
                     Impl::Data::DefaultFileLogger.mStream.open(Impl::Data::DefaultFileLogger.mPath, Impl::Data::DefaultFileLogger.mOpenMode);
                 
-                Impl::Data::DefaultFileLogger.mStream << out.view();
+                Impl::Data::DefaultFileLogger.mStream << vOut;
                     
                 if(State::Impl::Data::DirectFlush)
                     Impl::Data::DefaultFileLogger.mStream.flush();
@@ -1094,7 +1249,7 @@ namespace eLog {
                 if(!fileLogger.mStream.is_open())
                     fileLogger.mStream.open(fileLogger.mPath, fileLogger.mOpenMode);
 
-                    fileLogger.mStream << out.view();
+                fileLogger.mStream << vOut;
 
                 if(State::Impl::Data::DirectFlush)
                     fileLogger.mStream.flush();
@@ -1170,19 +1325,19 @@ namespace eLog {
             std::stringbuf out;
             LogImpl::fillLogBuffer(out, level, msg, label, src);
 
-            if(label == "default")
+            if(State::Impl::Data::BufferLog)
             {
-                if(State::Impl::Data::BufferLog)
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                if(Impl::Data::mLogBuffer.size() >= Impl::Data::mLogBuffer.capacity())
+                    Impl::Data::mLogBuffer.reserve(Impl::Data::mLogBuffer.capacity() + State::Impl::Data::BufferSize);
+                Impl::Data::mLogBuffer.emplace_back(out.view());
             }
-            else
+
+            if(State::Impl::Data::BufferLogLabel)
             {
-                if(State::Impl::Data::BufferLog)
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                auto& vec = Impl::Data::mLogBufferLabel[std::string(label)];
+                if(vec.size() >= vec.capacity())
+                    vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                vec.emplace_back(out.view());
             }
         }
 
@@ -1203,87 +1358,288 @@ namespace eLog {
             std::stringbuf out;
             LogImpl::fillLogBuffer(out, level, msg, label, src);
 
-            if(label == "default")
+            if(State::Impl::Data::BufferLog)
             {
-                if(State::Impl::Data::BufferLog)
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                if(Impl::Data::mFileLogBuffer.size() >= Impl::Data::mFileLogBuffer.capacity())
+                    Impl::Data::mFileLogBuffer.reserve(Impl::Data::mFileLogBuffer.capacity() + State::Impl::Data::BufferSize);
+                Impl::Data::mLogBuffer.emplace_back(out.view());
             }
-            else
+            
+            if(State::Impl::Data::BufferLogLabel)
             {
-                if(State::Impl::Data::BufferLog)
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                auto& vec = Impl::Data::mFileLogBufferLabel[std::string(label)];
+                if(vec.size() >= vec.capacity())
+                    vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                vec.emplace_back(out.view());
             }
         }
     } // namespace BufferLogImpL
 
     /**
-     * @namespace Colorize
-     * @brief Namespace containing functions for colorizing strings.
+     * @namespace CLogImpl
+     * @brief Namespace containing functions for logging messages.
      * 
-     * The Colorize namespace contains functions for colorizing strings.
-     * It includes functions for colorizing strings.
+     * The CLogImpl namespace contains functions for logging messages.
+     * It includes functions for logging messages to the console.
+     * 
+     * @note This namespace is defined within the Easylog.hpp file.
+     * 
+    */
+    namespace CLogImpl
+    {
+        void log(const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+        {
+            if(State::Impl::Data::IsConsoleLogEnabled)
+                LogImpl::log(level, msg, label, src);
+            if(State::Impl::Data::IsFileLogEnabled)
+                FileLogImpl::log(level, msg, label, src);
+            if(State::Impl::Data::BufferLogEnabled)
+            {
+                LogBufferImpl::log(level, msg, label, src);
+                LogBufferImpl::fileLog(level, msg, label, src);
+            }
+        }
+    } // namespace CLogImpl
+
+    /**
+     * @namespace Log
+     * @brief Namespace containing functions for logging messages in a seperate logging thread.
+     * 
+     * The Log namespace contains functions for logging messages in a seperate logging thread.
+     * It includes functions for logging messages in a seperate logging thread.
      * 
      * @note This namespace is defined within the Easylog.hpp file.
     */
-    namespace Colorize
+    namespace ThreadLog
     {
-
         /**
-         * @struct Colorize
-         * @brief Struct for storing the information for colorizing strings.
+         * @namespace Impl
+         * @brief Namespace containing implementation details for the ThreadLog namespace.
          * 
-         * This struct stores the information for colorizing strings.
-         * It includes the string to colorize, the color to use, and a flag indicating whether to replace all matching strings.
+         * The Impl namespace contains implementation details for the ThreadLog namespace.
+         * It includes structs for storing the state of the Easylog library.
+         * It also includes functions for checking if the library is in a certain state.
          * 
-         * @note This struct is defined within the Easylog.hpp file.
+         * @note This namespace is defined within the Easylog.hpp file.
         */
-        struct Colorize
+        namespace Impl
         {
-            std::string str;
-            AsciiColor::ColorEnum color;
-            bool replaceAllMatching = false;
-        };
-
-        /**
-         * @brief Creates the colorize information to colorize a string.
-         * 
-         * This function creates the colorize information to colorize a string.
-         * 
-         * @param str The string to colorize.
-         * @param color The color to use.
-         * @param replaceAllMatching A flag indicating whether to replace all matching strings.
-         * @return The colorize information.
-        */
-        Colorize colorize(std::string_view str, AsciiColor::ColorEnum color, bool replaceAllMatching = false)
-        {
-            return Colorize { 
-                .str = std::string(str),
-                .color = color,
-                .replaceAllMatching = replaceAllMatching
-            };
-        }
-
-        /**
-         * @brief Creates the colorized string based on the colorize information.
-         * 
-         * This function creates the colorized string based on the colorize information.
-         * 
-         * @param str The colorized string.
-         * @param colorizedStrings The colorize information.
-        */
-        void createColorizedString(StringHelper::ColorizedString& str, const std::vector<Colorize>& colorizedStrings)
-        {
-            for(const auto& colorizedString : colorizedStrings)
+            /**
+             * @struct LogTask
+             * @brief Struct for storing the information for a log task.
+             * 
+             * This struct stores the information for a log task.
+             * It includes the log level, log label, log message, and source location of the log task.
+             * 
+             * @note This struct is defined within the Easylog.hpp file.
+            */
+            struct LogTask
             {
-                str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
+                LogUsings::Scope<std::stringbuf> mLogLevel;
+                LogUsings::Scope<std::stringbuf> mLabel;
+                LogUsings::Scope<std::stringbuf> mMsg;
+                LogUsings::Scope<SourceLoc> mSrc;
+                LogUsings::Scope<std::vector<Colorize::Colorize>> mColorStack;
+            };
+
+            /**
+             * @brief Makes a log task.
+             * 
+             * This function makes a log task.
+             * 
+             * @param logLevel The log level.
+             * @param msg The message to log.
+             * @param label The log label.
+             * @param src The source location of the log message.
+             * @return The log task.
+            */
+            LogTask makeTask(LogLevel::LogLevel logLevel, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
+            {
+                std::stringbuf sLevel;
+                sLevel.sputn(logLevel.data(), logLevel.size());
+                std::stringbuf sLabel;
+                sLabel.sputn(label.data(), label.size());
+                std::stringbuf sMsg;
+                sMsg.sputn(msg.data(), msg.size());
+
+                return LogTask {
+                    .mLogLevel = std::make_unique<std::stringbuf>(std::move(sLevel)),
+                    .mLabel = std::make_unique<std::stringbuf>(std::move(sLabel)),
+                    .mMsg = std::make_unique<std::stringbuf>(std::move(sMsg)),
+                    .mSrc = std::make_unique<SourceLoc>(src),
+                    .mColorStack = nullptr,
+                };
             }
-            str.colorize();
+
+            /**
+             * @brief Makes a log task.
+             * 
+             * This function makes a log task.
+             * 
+             * @param logLevel The log level.
+             * @param msg The message to log.
+             * @param colorStack The color stack.
+             * @param label The log label.
+             * @param src The source location of the log message.
+             * @return The log task.
+            */
+            LogTask makeTask(LogLevel::LogLevel logLevel, std::string_view msg, const std::vector<Colorize::Colorize>& colorStack, LogLabel::Impl::Label label, const SourceLoc& src)
+            {
+                auto task = makeTask(logLevel, msg, label, src);
+                task.mColorStack = std::make_unique<std::vector<Colorize::Colorize>>(colorStack);
+                return task;
+            }
+
+            /**
+             * @struct Data
+             * @brief Struct for storing the state of the Easylog library.
+             * 
+             * This struct stores the state of the Easylog library.
+             * It includes static variables for storing the state of the library.
+             * 
+             * @note This struct is defined within the Easylog.hpp file.
+            */
+            struct Data
+            {
+                static std::mutex mtx;
+                static std::queue<LogTask> mLogTasks;
+                static std::condition_variable mCv;
+                static std::atomic<bool> mIsRunning;
+                static std::atomic<bool> mIsFinished;
+                static std::jthread mThread;
+            };
+            
+            std::mutex Data::mtx;
+            std::queue<LogTask> Data::mLogTasks;
+            std::condition_variable Data::mCv;
+            std::atomic<bool> Data::mIsRunning = false;
+            std::atomic<bool> Data::mIsFinished = false;
+            std::jthread Data::mThread;
+
+            /**
+             * @brief The logger thread function.
+             * 
+             * This function is the logger thread function.
+             * 
+             * @param stoken The stop token.
+            */
+            void loggerThreadFunc(std::stop_token stoken)
+            {
+                while(!stoken.stop_requested())
+                {
+                    std::unique_lock lock(Data::mtx);
+                    Data::mCv.wait(lock, []{ return !Data::mLogTasks.empty() || !Data::mIsRunning; });
+
+                    if(Data::mLogTasks.empty())
+                        continue;
+
+                    auto task = std::move(Data::mLogTasks.front());
+                    Data::mLogTasks.pop();
+                    lock.unlock();
+
+                    if(!task.mLogLevel || !task.mLabel || !task.mMsg || !task.mSrc)
+                        continue;
+
+
+                    auto vLogLevel = task.mLogLevel.get()->view();
+                    auto vLabel = task.mLabel.get()->view();
+                    auto vMsg = task.mMsg.get()->view();
+
+                    StringHelper::ColorizedString colorizedMsg;
+                    if(task.mColorStack)
+                    {
+                        auto colorStack = task.mColorStack.get();
+                        colorizedMsg.setContext(vMsg);
+                        Colorize::createColorizedString(colorizedMsg, *colorStack);
+                        vMsg = colorizedMsg.view();
+                    }
+
+                    CLogImpl::log(vLogLevel, vMsg, vLabel, *task.mSrc.get());
+                }
+                Impl::Data::mIsFinished = true;
+                
+            }
+        } // namespace Impl
+
+        /**
+         * @brief Pushes a log task to the log task queue.
+         * 
+         * This function pushes a log task to the log task queue.
+         * 
+         * @param task The log task.
+        */
+        void PushLogTask(Impl::LogTask&& task)
+        {
+            std::scoped_lock lock(Impl::Data::mtx);
+            Impl::Data::mLogTasks.emplace(std::move(task));
+            Impl::Data::mCv.notify_one();
         }
-    } // namespace Colorize
+
+        /**
+         * @brief Starts the logger thread.
+         * 
+         * This function starts the logger thread.
+        */
+        void StartLoggerThread()
+        {
+            if(!Impl::Data::mIsRunning)
+            {
+                Impl::Data::mIsRunning = true;
+                Impl::Data::mThread = std::jthread(Impl::loggerThreadFunc);
+            }
+        }
+
+        /**
+         * @brief Stops the logger thread.
+         * 
+         * This function stops the logger thread.
+        */
+        void StopLoggerThread()
+        {
+            if(Impl::Data::mIsRunning)
+            {
+                Impl::Data::mIsRunning = false;
+                Impl::Data::mThread.request_stop();
+                Impl::Data::mCv.notify_all();
+                Impl::Data::mThread.join();
+            }
+        }
+
+        /**
+         * @brief Waits for the logger thread to finish.
+         * 
+         * This function waits for the logger thread to finish.
+        */
+        void WaitLoggerThread()
+        {
+            if(Impl::Data::mIsRunning)
+                Impl::Data::mThread.join();
+        }
+
+        /**
+         * @brief Checks if the logger thread is running.
+         * 
+         * This function checks if the logger thread is running.
+         * 
+         * @return A flag indicating whether the logger thread is running.
+        */
+        bool IsLoggerThreadRunning()
+        {
+            return Impl::Data::mIsRunning;
+        }
+
+        /**
+         * @brief Checks if the logger thread is finished.
+         * 
+         * This function checks if the logger thread is finished.
+         * 
+         * @return A flag indicating whether the logger thread is finished.
+        */
+        bool IsLoggerThreadFinished()
+        {
+            return Impl::Data::mIsFinished;
+        }
+    } // namespace ThreadLog
 
     /**
      * @namespace State
@@ -1339,6 +1695,13 @@ namespace eLog {
                 case BUFFER_FILE_LOG_LABEL:
                     State::Impl::Data::BufferFileLogLabel = isEnabled;
                     State::Impl::Data::BufferLogEnabled = State::Impl::IsBuffering();
+                    break;
+                case THREADED_LOG:
+                    State::Impl::Data::ThreadedLog = isEnabled;
+                    if(State::Impl::Data::ThreadedLog)
+                        ThreadLog::StartLoggerThread();
+                    else
+                        ThreadLog::StopLoggerThread();
                     break;
             }
         }
@@ -1467,6 +1830,89 @@ namespace eLog {
         }
 
         /**
+         * @brief Clears the LogBuffer.
+         * 
+         * This function clears the LogBuffer.
+        */
+        void ClearLogBuffer()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mLogBuffer.clear();
+        }
+
+        /**
+         * @brief Clears the FileLogBuffer.
+         * 
+         * This function clears the FileLogBuffer.
+        */
+        void ClearFileLogBuffer()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mFileLogBuffer.clear();
+        }
+
+        /**
+         * @brief Clears the LogBufferLabel.
+         * 
+         * This function clears the LogBufferLabel.
+        */
+        void ClearLogBufferLabel()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mLogBufferLabel.clear();
+        }
+
+        /**
+         * @brief Clears the FileLogBufferLabel.
+         * 
+         * This function clears the FileLogBufferLabel.
+        */
+        void ClearFileLogBufferLabel()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mFileLogBufferLabel.clear();
+        }
+
+        /**
+         * @brief Clears the LogBuffer for a specific log label.
+         * 
+         * This function clears the LogBuffer for a specific log label.
+         * 
+         * @param label The log label.
+        */
+        void ClearLogBufferByLabel(LogLabel::Impl::Label label)
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mLogBufferLabel.erase(std::string(label));
+        }
+
+        /**
+         * @brief Clears the FileLogBuffer for a specific log label.
+         * 
+         * This function clears the FileLogBuffer for a specific log label.
+         * 
+         * @param label The log label.
+        */
+        void ClearFileLogBufferByLabel(LogLabel::Impl::Label label)
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mFileLogBufferLabel.erase(std::string(label));
+        }
+
+        /**
+         * @brief Clears all buffers.
+         * 
+         * This function clears all buffers.
+        */
+        void ClearBuffers()
+        {
+            ClearLogBuffer();
+            ClearFileLogBuffer();
+            ClearFileLogBufferLabel();
+            ClearLogBufferLabel();    
+        }
+
+        /**
          * @brief Adds a new log level.
          * 
          * This function adds a new log level.
@@ -1481,6 +1927,62 @@ namespace eLog {
             auto [it, success] = LogLevel::Impl::Data::LogLevels.try_emplace(std::string(logLevel), color);
             return success;
         }
+
+        /**
+         * @brief Close the stream of a file logger.
+         * 
+         * This function closes the stream of a file logger. Or all file loggers if no stream is specified.
+         * 
+         * @param stream The stream to close.
+        */
+        void CloseStream(std::string_view stream = "")
+        {
+            if(stream != "")
+            {
+                std::scoped_lock lock(State::Impl::Data::mtx);
+                if(stream == "default")
+                {
+                    if(FileLogImpl::Impl::Data::DefaultFileLogger.mStream.is_open())
+                        FileLogImpl::Impl::Data::DefaultFileLogger.mStream.close();
+                }
+                else
+                {
+                    auto it = FileLogImpl::Impl::Data::FileLoggers.find(std::string(stream));
+                    if(it != FileLogImpl::Impl::Data::FileLoggers.end() && it->second.mStream.is_open())
+                        it->second.mStream.close();
+                }
+            }
+            else
+            {
+                std::scoped_lock lock(State::Impl::Data::mtx);
+                if(FileLogImpl::Impl::Data::DefaultFileLogger.mStream.is_open())
+                    FileLogImpl::Impl::Data::DefaultFileLogger.mStream.close();
+                for(auto& [name, fileLogger] : FileLogImpl::Impl::Data::FileLoggers)
+                    if(fileLogger.mStream.is_open())
+                        fileLogger.mStream.close();
+            }
+        }
+
+        /**
+         * @brief Sets the default buffer size.
+         * 
+         * This function sets the default buffer size.
+         * 
+         * @param size The default buffer size.
+         * 
+         * @note The default buffer size is 1000.
+        */
+        void setDefaultBufferSize(std::size_t size)
+            {
+                State::Impl::Data::BufferSize = size;
+                LogBufferImpl::Impl::Data::mLogBuffer.reserve(size);
+                LogBufferImpl::Impl::Data::mFileLogBuffer.reserve(size);
+
+                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mLogBufferLabel)
+                    buffer.reserve(size);
+                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mFileLogBufferLabel)
+                    buffer.reserve(size);
+            }
     } // namespace State
 
     /**
@@ -1681,15 +2183,10 @@ namespace eLog {
     */
     void logCustom(const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        if(State::Impl::Data::IsConsoleLogEnabled)
-            LogImpl::log(level, msg, label, src);
-        if(State::Impl::Data::IsFileLogEnabled)
-            FileLogImpl::log(level, msg, label, src);
-        if(State::Impl::Data::BufferLogEnabled)
-        {
-            LogBufferImpl::log(level, msg, label, src);
-            LogBufferImpl::fileLog(level, msg, label, src);
-        }
+        if(State::Impl::Data::ThreadedLog)
+            ThreadLog::PushLogTask(ThreadLog::Impl::makeTask(level, msg, label, src));
+        else
+            CLogImpl::log(level, msg, label, src);
     }
 
     /**
@@ -1777,6 +2274,115 @@ namespace eLog {
     }
 
     /**
+     * @brief Logs a custom log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param logLevel The log level.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfCustom(bool condition, const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        if(condition)
+            logCustom(level, msg, label, src);
+    }
+
+    /**
+     * @brief Logs a trace log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfTrace(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "TRACE", msg, label, src);
+    }
+
+    /**
+     * @brief Logs a debug log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfDebug(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "DEBUG", msg, label, src);
+    }
+
+    /**
+     * @brief Logs an info log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+
+    void logIfInfo(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "INFO", msg, label, src);
+    }
+
+    /**
+     * @brief Logs a warning log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+
+    void logIfWarning(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "WARNING", msg, label, src);
+    }
+
+    /**
+     * @brief Logs an error log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfError(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "ERROR", msg, label, src);
+    }
+
+    /**
+     * @brief Logs a fatal log message if a condition is met.
+     * 
+     * This function logs a custom log message if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfFatal(bool condition, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "FATAL", msg, label, src);
+    }
+
+    /**
      * @brief Logs a custom log message with colorized strings.
      * 
      * This function logs a custom log message with colorized strings.
@@ -1787,12 +2393,12 @@ namespace eLog {
      * @param label The log label.
      * @param src The source location of the log message.
     */
-    void logCustom(const LogLevel::LogLevel& level, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    void logCustom(const LogLevel::LogLevel& level, std::string_view msg, const std::vector<Colorize::Colorize>& colorStack, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        StringHelper::ColorizedString colorizedString(msg);
-        Colorize::createColorizedString(colorizedString, colorizeStrings);
-
-        logCustom(level, colorizedString.getColorizedString(), label, src);
+        if(State::Impl::Data::ThreadedLog)
+            ThreadLog::PushLogTask(std::move(ThreadLog::Impl::makeTask(level, msg, colorStack, label, src)));
+        else
+            CLogImpl::log(level, msg, label, src);
     }
 
     /**
@@ -1883,5 +2489,119 @@ namespace eLog {
     void logFatal(std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {   
         logCustom("FATAL", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a custom log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param logLevel The log level.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfCustom(bool condition, const LogLevel::LogLevel& level, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        if(condition)
+            logCustom(level, msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a trace log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfTrace(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "TRACE", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a debug log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfDebug(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "DEBUG", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs an info log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfInfo(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {
+        logIfCustom(condition, "INFO", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a warning log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfWarning(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    {   
+        logIfCustom(condition, "WARNING", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs an error log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings.
+     * @param label The log label.
+     * @param src The source location of the log message. 
+    */
+    void logIfError(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current()) 
+    {
+        logIfCustom(condition, "ERROR", msg, colorizeStrings, label, src);
+    }
+
+    /**
+     * @brief Logs a fatal log message with colorized strings if a condition is met.
+     * 
+     * This function logs a custom log message with colorized strings if a condition is met.
+     * 
+     * @param condition The condition.
+     * @param msg The message to log.
+     * @param colorizeStrings The colorized strings. 
+     * @param label The log label.
+     * @param src The source location of the log message.
+    */
+    void logIfFatal(bool condition, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current()) 
+    {
+        logIfCustom(condition, "FATAL", msg, colorizeStrings, label, src);
     }
 } // namespace eLog
