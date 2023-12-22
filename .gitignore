@@ -4,5 +4,6 @@ build-LINUX/
 build-UNIX/
 build-MAC/
 .vscode/
+dev/
 main.cpp
 TODO.md
