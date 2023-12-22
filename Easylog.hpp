@@ -683,6 +683,7 @@ namespace eLog
                 static bool BufferFileLog;
                 static bool BufferFileLogLabel;
                 static bool ThreadedLog;
+                static std::size_t BufferSize;
             };
 
             std::mutex Data::mtx;
@@ -698,6 +699,7 @@ namespace eLog
             bool Data::BufferFileLog = false;
             bool Data::BufferFileLogLabel = false;
             bool Data::ThreadedLog = false;
+            std::size_t Data::BufferSize = 100;
 
             /**
              * @brief Checks if the library is in the terminal log state.
@@ -1237,7 +1239,7 @@ namespace eLog
                 if(!fileLogger.mStream.is_open())
                     fileLogger.mStream.open(fileLogger.mPath, fileLogger.mOpenMode);
 
-                    fileLogger.mStream << vOut;
+                fileLogger.mStream << vOut;
 
                 if(State::Impl::Data::DirectFlush)
                     fileLogger.mStream.flush();
@@ -1292,8 +1294,15 @@ namespace eLog
             std::mutex Data::mtx;
             std::vector<std::string> Data::mLogBuffer;
             std::vector<std::string> Data::mFileLogBuffer;
-            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mLogBufferLabel;
-            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mFileLogBufferLabel;
+            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mLogBufferLabel = 
+            {
+                {"default", {}}
+            };
+            
+            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mFileLogBufferLabel = 
+            {
+                {"default", {}}
+            };
         } // namespace Impl
 
         /**
@@ -1316,16 +1325,34 @@ namespace eLog
             if(label == "default")
             {
                 if(State::Impl::Data::BufferLog)
+                {
+                    if(Impl::Data::mLogBuffer.size() >= Impl::Data::mLogBuffer.capacity())
+                        Impl::Data::mLogBuffer.reserve(Impl::Data::mLogBuffer.capacity() + State::Impl::Data::BufferSize);
                     Impl::Data::mLogBuffer.emplace_back(out.view());
+                }
                 if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                {
+                    auto& vec = Impl::Data::mLogBufferLabel[std::string(label)];
+                    if(vec.size() >= vec.capacity())
+                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                    vec.emplace_back(out.view());
+                }
             }
             else
             {
                 if(State::Impl::Data::BufferLog)
+                {
+                    if(Impl::Data::mLogBuffer.size() >= Impl::Data::mLogBuffer.capacity())
+                        Impl::Data::mLogBuffer.reserve(Impl::Data::mLogBuffer.capacity() + State::Impl::Data::BufferSize);
                     Impl::Data::mLogBuffer.emplace_back(out.view());
+                }
                 if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                {
+                    auto& vec = Impl::Data::mLogBufferLabel[std::string(label)];
+                    if(vec.size() >= vec.capacity())
+                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                    vec.emplace_back(out.view());
+                }
             }
         }
 
@@ -1349,16 +1376,35 @@ namespace eLog
             if(label == "default")
             {
                 if(State::Impl::Data::BufferLog)
+                {
+                    if(Impl::Data::mFileLogBuffer.size() >= Impl::Data::mFileLogBuffer.capacity())
+                        Impl::Data::mFileLogBuffer.reserve(Impl::Data::mFileLogBuffer.capacity() + State::Impl::Data::BufferSize);
                     Impl::Data::mLogBuffer.emplace_back(out.view());
+                }
                 if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                {
+                    auto& vec = Impl::Data::mFileLogBufferLabel[std::string(label)];
+                    if(vec.size() >= vec.capacity())
+                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                    vec.emplace_back(out.view());
+                }
             }
             else
             {
                 if(State::Impl::Data::BufferLog)
+                {
+                    if(Impl::Data::mFileLogBuffer.size() >= Impl::Data::mFileLogBuffer.capacity())
+                        Impl::Data::mFileLogBuffer.reserve(Impl::Data::mFileLogBuffer.capacity() + State::Impl::Data::BufferSize);
                     Impl::Data::mLogBuffer.emplace_back(out.view());
+                }
                 if(State::Impl::Data::BufferLogLabel)
-                    Impl::Data::mLogBufferLabel[std::string(label)].emplace_back(out.view());
+                {
+                    auto& vec = Impl::Data::mFileLogBufferLabel[std::string(label)];
+                    if(vec.size() >= vec.capacity())
+                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                    vec.emplace_back(out.view());
+                
+                }
             }
         }
     } // namespace BufferLogImpL
@@ -1454,7 +1500,8 @@ namespace eLog
                     .mLogLevel = std::make_unique<std::stringbuf>(std::move(sLevel)),
                     .mLabel = std::make_unique<std::stringbuf>(std::move(sLabel)),
                     .mMsg = std::make_unique<std::stringbuf>(std::move(sMsg)),
-                    .mSrc = std::make_unique<SourceLoc>(src)
+                    .mSrc = std::make_unique<SourceLoc>(src),
+                    .mColorStack = nullptr,
                 };
             }
 
@@ -1949,6 +1996,27 @@ namespace eLog
                         fileLogger.mStream.close();
             }
         }
+
+        /**
+         * @brief Sets the default buffer size.
+         * 
+         * This function sets the default buffer size.
+         * 
+         * @param size The default buffer size.
+         * 
+         * @note The default buffer size is 1000.
+        */
+        void setDefaultBufferSize(std::size_t size)
+            {
+                State::Impl::Data::BufferSize = size;
+                LogBufferImpl::Impl::Data::mLogBuffer.reserve(size);
+                LogBufferImpl::Impl::Data::mFileLogBuffer.reserve(size);
+
+                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mLogBufferLabel)
+                    buffer.reserve(size);
+                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mFileLogBufferLabel)
+                    buffer.reserve(size);
+            }
     } // namespace State
 
     /**
