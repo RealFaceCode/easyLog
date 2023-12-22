@@ -229,6 +229,16 @@ namespace eLog
             }
         };
 
+        struct StringbufHash
+        {
+            using is_transparent = void;
+            std::size_t operator()(std::stringbuf& sv) const
+            {
+                std::hash<std::string_view> hasher;
+                return hasher(sv.view());
+            }
+        };
+
         /**
          * @brief This class represents a log configuration for the Easylog library.
          * 
@@ -1294,15 +1304,8 @@ namespace eLog
             std::mutex Data::mtx;
             std::vector<std::string> Data::mLogBuffer;
             std::vector<std::string> Data::mFileLogBuffer;
-            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mLogBufferLabel = 
-            {
-                {"default", {}}
-            };
-            
-            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mFileLogBufferLabel = 
-            {
-                {"default", {}}
-            };
+            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mLogBufferLabel;
+            std::unordered_map<std::string, std::vector<std::string>, StringHelper::StringHash, std::equal_to<>> Data::mFileLogBufferLabel;
         } // namespace Impl
 
         /**
@@ -1322,37 +1325,19 @@ namespace eLog
             std::stringbuf out;
             LogImpl::fillLogBuffer(out, level, msg, label, src);
 
-            if(label == "default")
+            if(State::Impl::Data::BufferLog)
             {
-                if(State::Impl::Data::BufferLog)
-                {
-                    if(Impl::Data::mLogBuffer.size() >= Impl::Data::mLogBuffer.capacity())
-                        Impl::Data::mLogBuffer.reserve(Impl::Data::mLogBuffer.capacity() + State::Impl::Data::BufferSize);
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                }
-                if(State::Impl::Data::BufferLogLabel)
-                {
-                    auto& vec = Impl::Data::mLogBufferLabel[std::string(label)];
-                    if(vec.size() >= vec.capacity())
-                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
-                    vec.emplace_back(out.view());
-                }
+                if(Impl::Data::mLogBuffer.size() >= Impl::Data::mLogBuffer.capacity())
+                    Impl::Data::mLogBuffer.reserve(Impl::Data::mLogBuffer.capacity() + State::Impl::Data::BufferSize);
+                Impl::Data::mLogBuffer.emplace_back(out.view());
             }
-            else
+
+            if(State::Impl::Data::BufferLogLabel)
             {
-                if(State::Impl::Data::BufferLog)
-                {
-                    if(Impl::Data::mLogBuffer.size() >= Impl::Data::mLogBuffer.capacity())
-                        Impl::Data::mLogBuffer.reserve(Impl::Data::mLogBuffer.capacity() + State::Impl::Data::BufferSize);
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                }
-                if(State::Impl::Data::BufferLogLabel)
-                {
-                    auto& vec = Impl::Data::mLogBufferLabel[std::string(label)];
-                    if(vec.size() >= vec.capacity())
-                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
-                    vec.emplace_back(out.view());
-                }
+                auto& vec = Impl::Data::mLogBufferLabel[std::string(label)];
+                if(vec.size() >= vec.capacity())
+                    vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                vec.emplace_back(out.view());
             }
         }
 
@@ -1373,38 +1358,19 @@ namespace eLog
             std::stringbuf out;
             LogImpl::fillLogBuffer(out, level, msg, label, src);
 
-            if(label == "default")
+            if(State::Impl::Data::BufferLog)
             {
-                if(State::Impl::Data::BufferLog)
-                {
-                    if(Impl::Data::mFileLogBuffer.size() >= Impl::Data::mFileLogBuffer.capacity())
-                        Impl::Data::mFileLogBuffer.reserve(Impl::Data::mFileLogBuffer.capacity() + State::Impl::Data::BufferSize);
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                }
-                if(State::Impl::Data::BufferLogLabel)
-                {
-                    auto& vec = Impl::Data::mFileLogBufferLabel[std::string(label)];
-                    if(vec.size() >= vec.capacity())
-                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
-                    vec.emplace_back(out.view());
-                }
+                if(Impl::Data::mFileLogBuffer.size() >= Impl::Data::mFileLogBuffer.capacity())
+                    Impl::Data::mFileLogBuffer.reserve(Impl::Data::mFileLogBuffer.capacity() + State::Impl::Data::BufferSize);
+                Impl::Data::mLogBuffer.emplace_back(out.view());
             }
-            else
+            
+            if(State::Impl::Data::BufferLogLabel)
             {
-                if(State::Impl::Data::BufferLog)
-                {
-                    if(Impl::Data::mFileLogBuffer.size() >= Impl::Data::mFileLogBuffer.capacity())
-                        Impl::Data::mFileLogBuffer.reserve(Impl::Data::mFileLogBuffer.capacity() + State::Impl::Data::BufferSize);
-                    Impl::Data::mLogBuffer.emplace_back(out.view());
-                }
-                if(State::Impl::Data::BufferLogLabel)
-                {
-                    auto& vec = Impl::Data::mFileLogBufferLabel[std::string(label)];
-                    if(vec.size() >= vec.capacity())
-                        vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
-                    vec.emplace_back(out.view());
-                
-                }
+                auto& vec = Impl::Data::mFileLogBufferLabel[std::string(label)];
+                if(vec.size() >= vec.capacity())
+                    vec.reserve(vec.capacity() + State::Impl::Data::BufferSize);
+                vec.emplace_back(out.view());
             }
         }
     } // namespace BufferLogImpL
