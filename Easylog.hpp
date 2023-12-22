@@ -1818,6 +1818,89 @@ namespace eLog
         }
 
         /**
+         * @brief Clears the LogBuffer.
+         * 
+         * This function clears the LogBuffer.
+        */
+        void ClearLogBuffer()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mLogBuffer.clear();
+        }
+
+        /**
+         * @brief Clears the FileLogBuffer.
+         * 
+         * This function clears the FileLogBuffer.
+        */
+        void ClearFileLogBuffer()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mFileLogBuffer.clear();
+        }
+
+        /**
+         * @brief Clears the LogBufferLabel.
+         * 
+         * This function clears the LogBufferLabel.
+        */
+        void ClearLogBufferLabel()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mLogBufferLabel.clear();
+        }
+
+        /**
+         * @brief Clears the FileLogBufferLabel.
+         * 
+         * This function clears the FileLogBufferLabel.
+        */
+        void ClearFileLogBufferLabel()
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mFileLogBufferLabel.clear();
+        }
+
+        /**
+         * @brief Clears the LogBuffer for a specific log label.
+         * 
+         * This function clears the LogBuffer for a specific log label.
+         * 
+         * @param label The log label.
+        */
+        void ClearLogBufferByLabel(LogLabel::Impl::Label label)
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mLogBufferLabel.erase(std::string(label));
+        }
+
+        /**
+         * @brief Clears the FileLogBuffer for a specific log label.
+         * 
+         * This function clears the FileLogBuffer for a specific log label.
+         * 
+         * @param label The log label.
+        */
+        void ClearFileLogBufferByLabel(LogLabel::Impl::Label label)
+        {
+            std::scoped_lock lock(State::Impl::Data::mtx);
+            LogBufferImpl::Impl::Data::mFileLogBufferLabel.erase(std::string(label));
+        }
+
+        /**
+         * @brief Clears all buffers.
+         * 
+         * This function clears all buffers.
+        */
+        void ClearBuffers()
+        {
+            ClearLogBuffer();
+            ClearFileLogBuffer();
+            ClearFileLogBufferLabel();
+            ClearLogBufferLabel();    
+        }
+
+        /**
          * @brief Adds a new log level.
          * 
          * This function adds a new log level.
