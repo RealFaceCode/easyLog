@@ -1583,7 +1583,6 @@ namespace eLog
         */
         void StopLoggerThread()
         {
-            //std::scoped_lock lock(Impl::Data::mtx);
             if(Impl::Data::mIsRunning)
             {
                 Impl::Data::mIsRunning = false;
