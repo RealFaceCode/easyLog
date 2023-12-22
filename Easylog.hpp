@@ -510,6 +510,11 @@ namespace eLog
                 return mStr;
             }
 
+            std::string_view view() const
+            {
+                return mStr;
+            }
+
             /**
              * @brief Prints the colorized string.
              * 
@@ -1426,6 +1431,53 @@ namespace eLog
             };
 
             /**
+             * @brief Makes a log task.
+             * 
+             * This function makes a log task.
+             * 
+             * @param logLevel The log level.
+             * @param msg The message to log.
+             * @param label The log label.
+             * @param src The source location of the log message.
+             * @return The log task.
+            */
+            LogTask makeTask(LogLevel::LogLevel logLevel, std::string_view msg, LogLabel::Impl::Label label, const SourceLoc& src)
+            {
+                std::stringbuf sLevel;
+                sLevel.sputn(logLevel.data(), logLevel.size());
+                std::stringbuf sLabel;
+                sLabel.sputn(label.data(), label.size());
+                std::stringbuf sMsg;
+                sMsg.sputn(msg.data(), msg.size());
+
+                return LogTask {
+                    .mLogLevel = std::make_unique<std::stringbuf>(std::move(sLevel)),
+                    .mLabel = std::make_unique<std::stringbuf>(std::move(sLabel)),
+                    .mMsg = std::make_unique<std::stringbuf>(std::move(sMsg)),
+                    .mSrc = std::make_unique<SourceLoc>(src)
+                };
+            }
+
+            /**
+             * @brief Makes a log task.
+             * 
+             * This function makes a log task.
+             * 
+             * @param logLevel The log level.
+             * @param msg The message to log.
+             * @param colorStack The color stack.
+             * @param label The log label.
+             * @param src The source location of the log message.
+             * @return The log task.
+            */
+            LogTask makeTask(LogLevel::LogLevel logLevel, std::string_view msg, const std::vector<Colorize::Colorize>& colorStack, LogLabel::Impl::Label label, const SourceLoc& src)
+            {
+                auto task = makeTask(logLevel, msg, label, src);
+                task.mColorStack = std::make_unique<std::vector<Colorize::Colorize>>(colorStack);
+                return task;
+            }
+
+            /**
              * @struct Data
              * @brief Struct for storing the state of the Easylog library.
              * 
@@ -1451,8 +1503,6 @@ namespace eLog
             std::atomic<bool> Data::mIsFinished = false;
             std::jthread Data::mThread;
 
-            std::size_t countpu = 0;
-            std::size_t countpo = 0;
             /**
              * @brief The logger thread function.
              * 
@@ -1462,7 +1512,6 @@ namespace eLog
             */
             void loggerThreadFunc(std::stop_token stoken)
             {
-                //TODO: add color logging
                 while(!stoken.stop_requested())
                 {
                     std::unique_lock lock(Data::mtx);
@@ -1474,14 +1523,23 @@ namespace eLog
                     auto task = std::move(Data::mLogTasks.front());
                     Data::mLogTasks.pop();
                     lock.unlock();
-                    countpo++;
 
                     if(!task.mLogLevel || !task.mLabel || !task.mMsg || !task.mSrc)
                         continue;
 
+
                     auto vLogLevel = task.mLogLevel.get()->view();
                     auto vLabel = task.mLabel.get()->view();
                     auto vMsg = task.mMsg.get()->view();
+
+                    StringHelper::ColorizedString colorizedMsg;
+                    if(task.mColorStack)
+                    {
+                        auto colorStack = task.mColorStack.get();
+                        colorizedMsg.setContext(vMsg);
+                        Colorize::createColorizedString(colorizedMsg, *colorStack);
+                        vMsg = colorizedMsg.view();
+                    }
 
                     CLogImpl::log(vLogLevel, vMsg, vLabel, *task.mSrc.get());
                 }
@@ -1502,7 +1560,6 @@ namespace eLog
             std::scoped_lock lock(Impl::Data::mtx);
             Impl::Data::mLogTasks.emplace(std::move(task));
             Impl::Data::mCv.notify_one();
-            Impl::countpu++;
         }
 
         /**
@@ -2011,21 +2068,7 @@ namespace eLog
     void logCustom(const LogLevel::LogLevel& level, std::string_view msg, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
         if(State::Impl::Data::ThreadedLog)
-        {
-            std::stringbuf sLevel;
-            sLevel.sputn(level.data(), level.size());
-            std::stringbuf sLabel;
-            sLabel.sputn(label.data(), label.size());
-            std::stringbuf sMsg;
-            sMsg.sputn(msg.data(), msg.size());
-
-            ThreadLog::Impl::LogTask task;
-            task.mLogLevel = std::make_unique<std::stringbuf>(std::move(sLevel));
-            task.mLabel = std::make_unique<std::stringbuf>(std::move(sLabel));
-            task.mMsg = std::make_unique<std::stringbuf>(std::move(sMsg));
-            task.mSrc = std::make_unique<SourceLoc>(src);
-            ThreadLog::PushLogTask(std::move(task));
-        }
+            ThreadLog::PushLogTask(ThreadLog::Impl::makeTask(level, msg, label, src));
         else
             CLogImpl::log(level, msg, label, src);
     }
@@ -2234,12 +2277,12 @@ namespace eLog
      * @param label The log label.
      * @param src The source location of the log message.
     */
-    void logCustom(const LogLevel::LogLevel& level, std::string_view msg, const std::vector<Colorize::Colorize>& colorizeStrings, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
+    void logCustom(const LogLevel::LogLevel& level, std::string_view msg, const std::vector<Colorize::Colorize>& colorStack, LogLabel::Impl::Label label = "default", const SourceLoc src = SourceLoc::current())
     {
-        StringHelper::ColorizedString colorizedString(msg);
-        Colorize::createColorizedString(colorizedString, colorizeStrings);
-
-        logCustom(level, colorizedString.getColorizedString(), label, src);
+        if(State::Impl::Data::ThreadedLog)
+            ThreadLog::PushLogTask(std::move(ThreadLog::Impl::makeTask(level, msg, colorStack, label, src)));
+        else
+            CLogImpl::log(level, msg, label, src);
     }
 
     /**
