@@ -229,16 +229,6 @@ namespace eLog
             }
         };
 
-        struct StringbufHash
-        {
-            using is_transparent = void;
-            std::size_t operator()(std::stringbuf& sv) const
-            {
-                std::hash<std::string_view> hasher;
-                return hasher(sv.view());
-            }
-        };
-
         /**
          * @brief This class represents a log configuration for the Easylog library.
          * 
@@ -580,7 +570,144 @@ namespace eLog
         }
     } // namespace StringHelper
 
-     /**
+    /**
+     * @namespace State
+     * @brief Namespace containing enums and structs for storing the state of the Easylog library.
+     *
+     * The State namespace contains enums and structs for storing the state of the Easylog library.
+     * It also includes functions for checking if the library is in a certain state.
+     * 
+     * @note This namespace is defined within the Easylog.hpp file.
+     */
+    namespace State
+    {
+
+        /**
+         * @namespace Impl
+         * @brief Namespace containing implementation details for the State namespace.
+         * 
+         * The Impl namespace contains implementation details for the State namespace.
+         * It includes structs for storing the state of the Easylog library.
+         * It also includes functions for checking if the library is in a certain state.
+         * 
+         * @note This namespace is defined within the Easylog.hpp file.
+        */
+        namespace Impl
+        {
+
+            /**
+             * @struct Data
+             * @brief Struct for storing the state of the Easylog library.
+             * 
+             * This struct stores the state of the Easylog library.
+             * It includes static variables for storing the state of the library.
+             * 
+             * @note This struct is defined within the Easylog.hpp file.
+            */
+            struct Data
+            {
+                static std::mutex mtx;
+                static std::string FileLoggerName;
+                static bool IsFileLogEnabled;
+                static bool IsConsoleLogEnabled;
+                static bool IsColorEnabled;
+                static bool UseDefaultFileLog;
+                static bool DirectFlush;
+                static bool BufferLogEnabled;
+                static bool BufferLog;
+                static bool BufferLogLabel;
+                static bool BufferFileLog;
+                static bool BufferFileLogLabel;
+                static bool ThreadedLog;
+                static std::size_t BufferSize;
+                static bool UseTime;
+                static bool UseDate;
+                static bool UseFile;
+                static bool UseFunction;
+                static bool UseLine;
+                static bool COLORLESS;
+            };
+
+            std::mutex Data::mtx;
+            std::string Data::FileLoggerName = "";
+            bool Data::IsFileLogEnabled = false;
+            bool Data::IsConsoleLogEnabled = true;
+            bool Data::IsColorEnabled = AsciiColor::CheckIfColorIsSupported();
+            bool Data::UseDefaultFileLog = true;
+            bool Data::DirectFlush = false;
+            bool Data::BufferLogEnabled = false;
+            bool Data::BufferLog = false;
+            bool Data::BufferLogLabel = false;
+            bool Data::BufferFileLog = false;
+            bool Data::BufferFileLogLabel = false;
+            bool Data::ThreadedLog = false;
+            std::size_t Data::BufferSize = 100;
+            bool Data::UseTime = true;
+            bool Data::UseDate = true;
+            bool Data::UseFile = true;
+            bool Data::UseFunction = true;
+            bool Data::UseLine = true;
+            bool Data::COLORLESS = false;
+
+            /**
+             * @brief Checks if the library is in the terminal log state.
+             * 
+             * This function checks if the library is in the terminal log state.
+             * 
+             * @return true if the library is in the terminal log state, false otherwise.
+             * 
+             * @note The library is in the terminal log state if any of the following are true:
+            */
+            bool IsBuffering()
+            {
+                return (Data::BufferLog || Data::BufferLogLabel || Data::BufferFileLog || Data::BufferFileLogLabel);
+            }
+
+            /**
+             * @brief Checks if the format is enabled.
+             * 
+             * This function checks if the format is enabled.
+             * 
+             * @return true if the format is enabled, false otherwise.
+             * 
+             * @note The format is enabled if any of the following are true:
+            */
+            bool UseFormat()
+            {
+                return (Data::UseTime || Data::UseDate || Data::UseFile || Data::UseFunction || Data::UseLine);
+            }
+        } // namespace Impl
+
+        /**
+         * @enum StateEnum
+         * @brief Enumeration representing different states of the Easylog library.
+         * 
+         * This enumeration represents different states of the Easylog library.
+         * It is used to set the state of the library.
+         * 
+         * @note This enum is defined within the Easylog.hpp file.
+        */
+        enum class StateEnum
+        {
+            TERMINAL_LOG,
+            FILE_LOG,
+            DEFAULT_FILE_LOG,
+            DIRECT_FLUSH,
+            BUFFER_LOG,
+            BUFFER_LOG_LABEL,
+            BUFFER_FILE_LOG,
+            BUFFER_FILE_LOG_LABEL,
+            THREADED_LOG,
+            USE_TIME,
+            USE_DATE,
+            USE_FILE,
+            USE_FUNCTION,
+            USE_LINE,
+            COLORLESS,
+        };
+    } // namespace State
+
+    /**
      * @namespace Colorize
      * @brief Namespace containing functions for colorizing strings.
      * 
@@ -636,115 +763,16 @@ namespace eLog
         */
         void createColorizedString(StringHelper::ColorizedString& str, const std::vector<Colorize>& colorizedStrings)
         {
-            for(const auto& colorizedString : colorizedStrings)
+            if(!State::Impl::Data::COLORLESS)
             {
-                str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
+                for(const auto& colorizedString : colorizedStrings)
+                {
+                    str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
+                }
+                str.colorize();
             }
-            str.colorize();
         }
     } // namespace Colorize
-
-    /**
-     * @namespace State
-     * @brief Namespace containing enums and structs for storing the state of the Easylog library.
-     *
-     * The State namespace contains enums and structs for storing the state of the Easylog library.
-     * It also includes functions for checking if the library is in a certain state.
-     * 
-     * @note This namespace is defined within the Easylog.hpp file.
-     */
-    namespace State
-    {
-
-        /**
-         * @namespace Impl
-         * @brief Namespace containing implementation details for the State namespace.
-         * 
-         * The Impl namespace contains implementation details for the State namespace.
-         * It includes structs for storing the state of the Easylog library.
-         * It also includes functions for checking if the library is in a certain state.
-         * 
-         * @note This namespace is defined within the Easylog.hpp file.
-        */
-        namespace Impl
-        {
-
-            /**
-             * @struct Data
-             * @brief Struct for storing the state of the Easylog library.
-             * 
-             * This struct stores the state of the Easylog library.
-             * It includes static variables for storing the state of the library.
-             * 
-             * @note This struct is defined within the Easylog.hpp file.
-            */
-            struct Data
-            {
-                static std::mutex mtx;
-                static std::string FileLoggerName;
-                static bool IsFileLogEnabled;
-                static bool IsConsoleLogEnabled;
-                static bool IsColorEnabled;
-                static bool UseDefaultFileLog;
-                static bool DirectFlush;
-                static bool BufferLogEnabled;
-                static bool BufferLog;
-                static bool BufferLogLabel;
-                static bool BufferFileLog;
-                static bool BufferFileLogLabel;
-                static bool ThreadedLog;
-                static std::size_t BufferSize;
-            };
-
-            std::mutex Data::mtx;
-            std::string Data::FileLoggerName = "";
-            bool Data::IsFileLogEnabled = false;
-            bool Data::IsConsoleLogEnabled = true;
-            bool Data::IsColorEnabled = AsciiColor::CheckIfColorIsSupported();
-            bool Data::UseDefaultFileLog = true;
-            bool Data::DirectFlush = false;
-            bool Data::BufferLogEnabled = false;
-            bool Data::BufferLog = false;
-            bool Data::BufferLogLabel = false;
-            bool Data::BufferFileLog = false;
-            bool Data::BufferFileLogLabel = false;
-            bool Data::ThreadedLog = false;
-            std::size_t Data::BufferSize = 100;
-
-            /**
-             * @brief Checks if the library is in the terminal log state.
-             * 
-             * This function checks if the library is in the terminal log state.
-             * 
-             * @return true if the library is in the terminal log state, false otherwise.
-            */
-            bool IsBuffering() {
-                return (Data::BufferLog || Data::BufferLogLabel || Data::BufferFileLog || Data::BufferFileLogLabel);
-            }
-        } // namespace Impl
-
-        /**
-         * @enum StateEnum
-         * @brief Enumeration representing different states of the Easylog library.
-         * 
-         * This enumeration represents different states of the Easylog library.
-         * It is used to set the state of the library.
-         * 
-         * @note This enum is defined within the Easylog.hpp file.
-        */
-        enum class StateEnum
-        {
-            TERMINAL_LOG,
-            FILE_LOG,
-            DEFAULT_FILE_LOG,
-            DIRECT_FLUSH,
-            BUFFER_LOG,
-            BUFFER_LOG_LABEL,
-            BUFFER_FILE_LOG,
-            BUFFER_FILE_LOG_LABEL,
-            THREADED_LOG
-        };
-    } // namespace State
 
     /**
      * @namespace LogLabel
@@ -849,6 +877,20 @@ namespace eLog
                 {"ERROR", AsciiColor::ColorEnum::BOLD_RED},
                 {"FATAL", AsciiColor::ColorEnum::BOLD_MAGENTA}
             }; // namespace Impl
+
+            /**
+             * @brief Fills the string buffer with the color of the log level.
+             * 
+             * This function fills the string buffer with the color of the log level.
+             * 
+             * @param logLevelString The string buffer to fill.
+             * @param color The color of the log level.
+            */
+            void FillColor(std::stringbuf& logLevelString, eLog::AsciiColor::ColorEnum color)
+            {
+                auto c = AsciiColor::AsciiColors.at(color);
+                logLevelString.sputn(c.data(), c.length());
+            }
         } // namespace Impl
 
         /**
@@ -863,21 +905,19 @@ namespace eLog
         void getLogLevelString(std::stringbuf& logLevelString, LogLevel logLevel, bool colorize = true)
         {
             auto it = Impl::Data::LogLevels.find(logLevel);
-            if(colorize)
+            if(colorize && !State::Impl::Data::COLORLESS)
             {
                 if(it != Impl::Data::LogLevels.end())
                 {
-                    auto c = AsciiColor::AsciiColors.at(it->second);
-                    logLevelString.sputn(c.data(),c.length());
+                    Impl::FillColor(logLevelString, it->second);
                     logLevelString.sputn(logLevel.data(), logLevel.length());
                 }
                 else
                 {
-                    auto c = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE);
-                    logLevelString.sputn(c.data(), c.length());
+                    Impl::FillColor(logLevelString, AsciiColor::ColorEnum::BOLD_WHITE);
                     logLevelString.sputn("UNKNOWN", 7);
                 }
-
+                
                 logLevelString.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
             }
             else
@@ -951,17 +991,32 @@ namespace eLog
         */
         void fillBaseFormat(std::stringbuf& buf, std::string_view file, std::string_view function, std::string_view line, std::string_view date, std::string_view time)
         {
+            
             buf.sputn("[", 1);
-            buf.sputn(date.data(), date.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(time.data(), time.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(file.data(), file.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(function.data(), function.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(line.data(), line.length());
-            buf.sputn("]", 1);
+            if(State::Impl::Data::UseDate)
+            {
+                buf.sputn(date.data(), date.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseTime)
+            {
+                buf.sputn(time.data(), time.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseFile)
+            {
+                buf.sputn(file.data(), file.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseFunction)
+            {
+                buf.sputn(function.data(), function.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseLine)
+                buf.sputn(line.data(), line.length());
+            buf.sputc(']');
+            
         }
 
         /**
@@ -974,11 +1029,14 @@ namespace eLog
         */
         void getFmtLogInfo(std::stringbuf& fmtLogInfo, const LogInfo& logInfo, bool colorize = true)
         {
-            if(colorize)
-                fmtLogInfo.sputn(logInfo.mColor.data(), logInfo.mColor.length());
-            fillBaseFormat(fmtLogInfo, logInfo.mFile.filename().string(), logInfo.mFunction, logInfo.mLine, logInfo.mDate, logInfo.mTime);
-            if(colorize)
-                fmtLogInfo.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+            if(State::Impl::UseFormat())
+            {
+                if(colorize && !State::Impl::Data::COLORLESS)
+                    fmtLogInfo.sputn(logInfo.mColor.data(), logInfo.mColor.length());
+                fillBaseFormat(fmtLogInfo, logInfo.mFile.filename().string(), logInfo.mFunction, logInfo.mLine, logInfo.mDate, logInfo.mTime);
+                if(colorize && !State::Impl::Data::COLORLESS)
+                    fmtLogInfo.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+            }
         }
     } // namespace LogInfo
 
@@ -1034,7 +1092,8 @@ namespace eLog
                 LogLabel::getLabelStringLog(labelString, label);
                 auto vLabelString = labelString.view();
                 buf.sputn(vLabelString.data(), vLabelString.length());
-                buf.sputc(' ');
+                if(State::Impl::UseFormat())
+                    buf.sputc(' ');
             }
 
             buf.sputn(vFmtLogInfo.data(), vFmtLogInfo.length());
@@ -1703,6 +1762,24 @@ namespace eLog
                     else
                         ThreadLog::StopLoggerThread();
                     break;
+                case USE_DATE:
+                    State::Impl::Data::UseDate = isEnabled;
+                    break;
+                case USE_TIME:
+                    State::Impl::Data::UseTime = isEnabled;
+                    break;
+                case USE_FILE:
+                    State::Impl::Data::UseFile = isEnabled;
+                    break;
+                case USE_FUNCTION:
+                    State::Impl::Data::UseFunction = isEnabled;
+                    break;
+                case USE_LINE:
+                    State::Impl::Data::UseLine = isEnabled;
+                    break;
+                case COLORLESS:
+                    State::Impl::Data::COLORLESS = isEnabled;
+                    break;
             }
         }
 
@@ -1973,16 +2050,16 @@ namespace eLog
          * @note The default buffer size is 1000.
         */
         void setDefaultBufferSize(std::size_t size)
-            {
-                State::Impl::Data::BufferSize = size;
-                LogBufferImpl::Impl::Data::mLogBuffer.reserve(size);
-                LogBufferImpl::Impl::Data::mFileLogBuffer.reserve(size);
+        {
+            State::Impl::Data::BufferSize = size;
+            LogBufferImpl::Impl::Data::mLogBuffer.reserve(size);
+            LogBufferImpl::Impl::Data::mFileLogBuffer.reserve(size);
 
-                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mLogBufferLabel)
-                    buffer.reserve(size);
-                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mFileLogBufferLabel)
-                    buffer.reserve(size);
-            }
+            for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mLogBufferLabel)
+                buffer.reserve(size);
+            for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mFileLogBufferLabel)
+                buffer.reserve(size);
+        }
     } // namespace State
 
     /**
