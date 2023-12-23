@@ -229,16 +229,6 @@ namespace eLog
             }
         };
 
-        struct StringbufHash
-        {
-            using is_transparent = void;
-            std::size_t operator()(std::stringbuf& sv) const
-            {
-                std::hash<std::string_view> hasher;
-                return hasher(sv.view());
-            }
-        };
-
         /**
          * @brief This class represents a log configuration for the Easylog library.
          * 
@@ -580,7 +570,7 @@ namespace eLog
         }
     } // namespace StringHelper
 
-     /**
+    /**
      * @namespace Colorize
      * @brief Namespace containing functions for colorizing strings.
      * 
@@ -694,6 +684,11 @@ namespace eLog
                 static bool BufferFileLogLabel;
                 static bool ThreadedLog;
                 static std::size_t BufferSize;
+                static bool UseTime;
+                static bool UseDate;
+                static bool UseFile;
+                static bool UseFunction;
+                static bool UseLine;
             };
 
             std::mutex Data::mtx;
@@ -710,6 +705,11 @@ namespace eLog
             bool Data::BufferFileLogLabel = false;
             bool Data::ThreadedLog = false;
             std::size_t Data::BufferSize = 100;
+            bool Data::UseTime = true;
+            bool Data::UseDate = true;
+            bool Data::UseFile = true;
+            bool Data::UseFunction = true;
+            bool Data::UseLine = true;
 
             /**
              * @brief Checks if the library is in the terminal log state.
@@ -717,9 +717,26 @@ namespace eLog
              * This function checks if the library is in the terminal log state.
              * 
              * @return true if the library is in the terminal log state, false otherwise.
+             * 
+             * @note The library is in the terminal log state if any of the following are true:
             */
-            bool IsBuffering() {
+            bool IsBuffering()
+            {
                 return (Data::BufferLog || Data::BufferLogLabel || Data::BufferFileLog || Data::BufferFileLogLabel);
+            }
+
+            /**
+             * @brief Checks if the format is enabled.
+             * 
+             * This function checks if the format is enabled.
+             * 
+             * @return true if the format is enabled, false otherwise.
+             * 
+             * @note The format is enabled if any of the following are true:
+            */
+            bool UseFormat()
+            {
+                return (Data::UseTime || Data::UseDate || Data::UseFile || Data::UseFunction || Data::UseLine);
             }
         } // namespace Impl
 
@@ -742,7 +759,12 @@ namespace eLog
             BUFFER_LOG_LABEL,
             BUFFER_FILE_LOG,
             BUFFER_FILE_LOG_LABEL,
-            THREADED_LOG
+            THREADED_LOG,
+            USE_TIME,
+            USE_DATE,
+            USE_FILE,
+            USE_FUNCTION,
+            USE_LINE,
         };
     } // namespace State
 
@@ -951,17 +973,32 @@ namespace eLog
         */
         void fillBaseFormat(std::stringbuf& buf, std::string_view file, std::string_view function, std::string_view line, std::string_view date, std::string_view time)
         {
+            
             buf.sputn("[", 1);
-            buf.sputn(date.data(), date.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(time.data(), time.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(file.data(), file.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(function.data(), function.length());
-            buf.sputn(" | ", 3);
-            buf.sputn(line.data(), line.length());
-            buf.sputn("]", 1);
+            if(State::Impl::Data::UseDate)
+            {
+                buf.sputn(date.data(), date.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseTime)
+            {
+                buf.sputn(time.data(), time.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseFile)
+            {
+                buf.sputn(file.data(), file.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseFunction)
+            {
+                buf.sputn(function.data(), function.length());
+                buf.sputn(" | ", 3);
+            }
+            if(State::Impl::Data::UseLine)
+                buf.sputn(line.data(), line.length());
+            buf.sputc(']');
+            
         }
 
         /**
@@ -974,11 +1011,14 @@ namespace eLog
         */
         void getFmtLogInfo(std::stringbuf& fmtLogInfo, const LogInfo& logInfo, bool colorize = true)
         {
-            if(colorize)
-                fmtLogInfo.sputn(logInfo.mColor.data(), logInfo.mColor.length());
-            fillBaseFormat(fmtLogInfo, logInfo.mFile.filename().string(), logInfo.mFunction, logInfo.mLine, logInfo.mDate, logInfo.mTime);
-            if(colorize)
-                fmtLogInfo.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+            if(State::Impl::UseFormat())
+            {
+                if(colorize)
+                    fmtLogInfo.sputn(logInfo.mColor.data(), logInfo.mColor.length());
+                fillBaseFormat(fmtLogInfo, logInfo.mFile.filename().string(), logInfo.mFunction, logInfo.mLine, logInfo.mDate, logInfo.mTime);
+                if(colorize)
+                    fmtLogInfo.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
+            }
         }
     } // namespace LogInfo
 
@@ -1034,7 +1074,8 @@ namespace eLog
                 LogLabel::getLabelStringLog(labelString, label);
                 auto vLabelString = labelString.view();
                 buf.sputn(vLabelString.data(), vLabelString.length());
-                buf.sputc(' ');
+                if(State::Impl::UseFormat())
+                    buf.sputc(' ');
             }
 
             buf.sputn(vFmtLogInfo.data(), vFmtLogInfo.length());
@@ -1703,6 +1744,21 @@ namespace eLog
                     else
                         ThreadLog::StopLoggerThread();
                     break;
+                case USE_DATE:
+                    State::Impl::Data::UseDate = isEnabled;
+                    break;
+                case USE_TIME:
+                    State::Impl::Data::UseTime = isEnabled;
+                    break;
+                case USE_FILE:
+                    State::Impl::Data::UseFile = isEnabled;
+                    break;
+                case USE_FUNCTION:
+                    State::Impl::Data::UseFunction = isEnabled;
+                    break;
+                case USE_LINE:
+                    State::Impl::Data::UseLine = isEnabled;
+                    break;
             }
         }
 
@@ -1973,16 +2029,16 @@ namespace eLog
          * @note The default buffer size is 1000.
         */
         void setDefaultBufferSize(std::size_t size)
-            {
-                State::Impl::Data::BufferSize = size;
-                LogBufferImpl::Impl::Data::mLogBuffer.reserve(size);
-                LogBufferImpl::Impl::Data::mFileLogBuffer.reserve(size);
+        {
+            State::Impl::Data::BufferSize = size;
+            LogBufferImpl::Impl::Data::mLogBuffer.reserve(size);
+            LogBufferImpl::Impl::Data::mFileLogBuffer.reserve(size);
 
-                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mLogBufferLabel)
-                    buffer.reserve(size);
-                for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mFileLogBufferLabel)
-                    buffer.reserve(size);
-            }
+            for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mLogBufferLabel)
+                buffer.reserve(size);
+            for(auto& [label, buffer] : LogBufferImpl::Impl::Data::mFileLogBufferLabel)
+                buffer.reserve(size);
+        }
     } // namespace State
 
     /**
