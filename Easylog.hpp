@@ -571,70 +571,6 @@ namespace eLog
     } // namespace StringHelper
 
     /**
-     * @namespace Colorize
-     * @brief Namespace containing functions for colorizing strings.
-     * 
-     * The Colorize namespace contains functions for colorizing strings.
-     * It includes functions for colorizing strings.
-     * 
-     * @note This namespace is defined within the Easylog.hpp file.
-    */
-    namespace Colorize
-    {
-        /**
-         * @struct Colorize
-         * @brief Struct for storing the information for colorizing strings.
-         * 
-         * This struct stores the information for colorizing strings.
-         * It includes the string to colorize, the color to use, and a flag indicating whether to replace all matching strings.
-         * 
-         * @note This struct is defined within the Easylog.hpp file.
-        */
-        struct Colorize
-        {
-            std::string str;
-            AsciiColor::ColorEnum color;
-            bool replaceAllMatching = false;
-        };
-
-        /**
-         * @brief Creates the colorize information to colorize a string.
-         * 
-         * This function creates the colorize information to colorize a string.
-         * 
-         * @param str The string to colorize.
-         * @param color The color to use.
-         * @param replaceAllMatching A flag indicating whether to replace all matching strings.
-         * @return The colorize information.
-        */
-        Colorize colorize(std::string_view str, AsciiColor::ColorEnum color, bool replaceAllMatching = false)
-        {
-            return Colorize { 
-                .str = std::string(str),
-                .color = color,
-                .replaceAllMatching = replaceAllMatching
-            };
-        }
-
-        /**
-         * @brief Creates the colorized string based on the colorize information.
-         * 
-         * This function creates the colorized string based on the colorize information.
-         * 
-         * @param str The colorized string.
-         * @param colorizedStrings The colorize information.
-        */
-        void createColorizedString(StringHelper::ColorizedString& str, const std::vector<Colorize>& colorizedStrings)
-        {
-            for(const auto& colorizedString : colorizedStrings)
-            {
-                str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
-            }
-            str.colorize();
-        }
-    } // namespace Colorize
-
-    /**
      * @namespace State
      * @brief Namespace containing enums and structs for storing the state of the Easylog library.
      *
@@ -689,6 +625,7 @@ namespace eLog
                 static bool UseFile;
                 static bool UseFunction;
                 static bool UseLine;
+                static bool COLORLESS;
             };
 
             std::mutex Data::mtx;
@@ -710,6 +647,7 @@ namespace eLog
             bool Data::UseFile = true;
             bool Data::UseFunction = true;
             bool Data::UseLine = true;
+            bool Data::COLORLESS = false;
 
             /**
              * @brief Checks if the library is in the terminal log state.
@@ -765,8 +703,76 @@ namespace eLog
             USE_FILE,
             USE_FUNCTION,
             USE_LINE,
+            COLORLESS,
         };
     } // namespace State
+
+    /**
+     * @namespace Colorize
+     * @brief Namespace containing functions for colorizing strings.
+     * 
+     * The Colorize namespace contains functions for colorizing strings.
+     * It includes functions for colorizing strings.
+     * 
+     * @note This namespace is defined within the Easylog.hpp file.
+    */
+    namespace Colorize
+    {
+        /**
+         * @struct Colorize
+         * @brief Struct for storing the information for colorizing strings.
+         * 
+         * This struct stores the information for colorizing strings.
+         * It includes the string to colorize, the color to use, and a flag indicating whether to replace all matching strings.
+         * 
+         * @note This struct is defined within the Easylog.hpp file.
+        */
+        struct Colorize
+        {
+            std::string str;
+            AsciiColor::ColorEnum color;
+            bool replaceAllMatching = false;
+        };
+
+        /**
+         * @brief Creates the colorize information to colorize a string.
+         * 
+         * This function creates the colorize information to colorize a string.
+         * 
+         * @param str The string to colorize.
+         * @param color The color to use.
+         * @param replaceAllMatching A flag indicating whether to replace all matching strings.
+         * @return The colorize information.
+        */
+        Colorize colorize(std::string_view str, AsciiColor::ColorEnum color, bool replaceAllMatching = false)
+        {
+            return Colorize { 
+                .str = std::string(str),
+                .color = color,
+                .replaceAllMatching = replaceAllMatching
+            };
+        }
+
+        /**
+         * @brief Creates the colorized string based on the colorize information.
+         * 
+         * This function creates the colorized string based on the colorize information.
+         * 
+         * @param str The colorized string.
+         * @param colorizedStrings The colorize information.
+        */
+        void createColorizedString(StringHelper::ColorizedString& str, const std::vector<Colorize>& colorizedStrings)
+        {
+            if(!State::Impl::Data::COLORLESS)
+            {
+                for(const auto& colorizedString : colorizedStrings)
+                {
+                    str.setColor(colorizedString.str, colorizedString.color, colorizedString.replaceAllMatching);
+                }
+                str.colorize();
+            }
+        }
+    } // namespace Colorize
 
     /**
      * @namespace LogLabel
@@ -871,6 +877,20 @@ namespace eLog
                 {"ERROR", AsciiColor::ColorEnum::BOLD_RED},
                 {"FATAL", AsciiColor::ColorEnum::BOLD_MAGENTA}
             }; // namespace Impl
+
+            /**
+             * @brief Fills the string buffer with the color of the log level.
+             * 
+             * This function fills the string buffer with the color of the log level.
+             * 
+             * @param logLevelString The string buffer to fill.
+             * @param color The color of the log level.
+            */
+            void FillColor(std::stringbuf& logLevelString, eLog::AsciiColor::ColorEnum color)
+            {
+                auto c = AsciiColor::AsciiColors.at(color);
+                logLevelString.sputn(c.data(), c.length());
+            }
         } // namespace Impl
 
         /**
@@ -885,21 +905,19 @@ namespace eLog
         void getLogLevelString(std::stringbuf& logLevelString, LogLevel logLevel, bool colorize = true)
         {
             auto it = Impl::Data::LogLevels.find(logLevel);
-            if(colorize)
+            if(colorize && !State::Impl::Data::COLORLESS)
             {
                 if(it != Impl::Data::LogLevels.end())
                 {
-                    auto c = AsciiColor::AsciiColors.at(it->second);
-                    logLevelString.sputn(c.data(),c.length());
+                    Impl::FillColor(logLevelString, it->second);
                     logLevelString.sputn(logLevel.data(), logLevel.length());
                 }
                 else
                 {
-                    auto c = AsciiColor::AsciiColors.at(AsciiColor::ColorEnum::BOLD_WHITE);
-                    logLevelString.sputn(c.data(), c.length());
+                    Impl::FillColor(logLevelString, AsciiColor::ColorEnum::BOLD_WHITE);
                     logLevelString.sputn("UNKNOWN", 7);
                 }
-
+                
                 logLevelString.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
             }
             else
@@ -1013,10 +1031,10 @@ namespace eLog
         {
             if(State::Impl::UseFormat())
             {
-                if(colorize)
+                if(colorize && !State::Impl::Data::COLORLESS)
                     fmtLogInfo.sputn(logInfo.mColor.data(), logInfo.mColor.length());
                 fillBaseFormat(fmtLogInfo, logInfo.mFile.filename().string(), logInfo.mFunction, logInfo.mLine, logInfo.mDate, logInfo.mTime);
-                if(colorize)
+                if(colorize && !State::Impl::Data::COLORLESS)
                     fmtLogInfo.sputn(AsciiColor::ResetColor.data(), AsciiColor::ResetColor.length());
             }
         }
@@ -1758,6 +1776,9 @@ namespace eLog
                     break;
                 case USE_LINE:
                     State::Impl::Data::UseLine = isEnabled;
+                    break;
+                case COLORLESS:
+                    State::Impl::Data::COLORLESS = isEnabled;
                     break;
             }
         }
