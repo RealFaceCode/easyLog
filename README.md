@@ -18,6 +18,8 @@
 
 This logging system in C++ supports colored output and string replacement. It includes several functions and data structures to facilitate logging with various log levels and customization options.
 
+[New approach on EasyLog](https://github.com/RealFaceCode/eLog.git)
+
 ## Features
 
 - Logging messages to the console and/or a file
